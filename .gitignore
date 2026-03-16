@@ -232,4 +232,6 @@ desktop.ini
 # 自定义忽略
 nets/
 data/
+weights/
+test.py
 # ============================
