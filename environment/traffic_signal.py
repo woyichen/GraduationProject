@@ -19,7 +19,8 @@ class TrafficSignal:
                  min_green: int = 10,
                  max_green: int = 60,
                  delta_rs_update_time: int = 1,
-                 use_neighbor: bool = False
+                 use_neighbor: bool = False,
+                 reward_type="delta_waiting"
                  ):
         """
         :param sumo: # 链接对象
@@ -53,35 +54,43 @@ class TrafficSignal:
         self.green_phase = None
         # 当前黄灯相位对象
         self.yellow_phase = None
-        # 当前相位（绿，黄）的结束时间
-        self.end_time = 0
 
         # 下次可以执行动作的时间
         self.next_action_time = 0
 
         # 所有相位
-        self.all_phases = self.sumo.trafficlight.getAllProgramLogics(ts_id)[0].phases
+        # self.all_phases = self.sumo.trafficlight.getAllProgramLogics(ts_id)[0].phases
+        self.all_phases = None
         # 没有黄灯的相位
-        self.all_green_phases = [phase for phase in self.all_phases if 'y' not in phase.state]
+        # self.all_green_phases = [phase for phase in self.all_phases if 'y' not in phase.state.lower()]
+        self.all_green_phases = None
 
         # 控制的车道
-        self.lanes = list(dict.fromkeys(self.sumo.trafficlight.getControlledLanes(self.ts_id)))
+        # self.lanes = list(dict.fromkeys(self.sumo.trafficlight.getControlledLanes(self.ts_id)))
+        self.lanes = None
         # 车道长度
-        self.lanes_length = {lane_id: self.sumo.lane.getLength(lane_id) for lane_id in self.lanes}
+        # self.lanes_length = {lane_id: self.sumo.lane.getLength(lane_id) for lane_id in self.lanes}
+        self.lanes_length = None
 
         # 观测空间
-        self.observation_space = spaces.Box(
-            low=0, high=1, shape=(len(self.lanes),), dtype=np.float32
-        )
+        # self.observation_space = spaces.Box(
+        #     low=0, high=1, shape=(len(self.lanes),), dtype=np.float32
+        # )
+        self.observation_space = None
         # 动作空间
-        self.action_space = spaces.Discrete(len(self.all_green_phases))
+        # self.action_space = spaces.Discrete(len(self.all_green_phases))
+        self.action_space = None
 
         # 上一状态等待车辆数
         self.last_waiting = 0
+        # 选择何种奖励函数
+        self.reward_type = reward_type
         # 多路口通信时
-        if use_neighbor:
+        self.use_neighbor = use_neighbor
+        if self.use_neighbor:
             self.neighbors = []
-            self._set_neighbors()
+        if self.sumo is not None:
+            self.initialize()
 
     def _set_neighbors(self):
         """
@@ -113,12 +122,31 @@ class TrafficSignal:
 
         self.neighbors = list(neighbors)
 
+    def initialize(self):
+        """
+        SUMO启动后获取相位
+        :return:
+        """
+        self.all_phases = self.sumo.trafficlight.getAllProgramLogics(self.ts_id)[0].phases
+        self.all_green_phases = [p for p in self.all_phases if 'y' not in p.state.lower()]
+        self.lanes = list(dict.fromkeys(self.sumo.trafficlight.getControlledLanes(self.ts_id)))
+        self.lanes_length = {lane_id: self.sumo.lane.getLength(lane_id) for lane_id in self.lanes}
+        self.observation_space = spaces.Box(
+            low=0, high=1, shape=(len(self.lanes),), dtype=np.float32
+        )
+        self.action_space = spaces.Discrete(len(self.all_green_phases))
+        if self.use_neighbor:
+            self._set_neighbors()
+
     def update_phase_time(self):
         """
         每个仿真步更新绿灯持续时间
         :return:
         """
         current_time = self.sumo.simulation.getTime()
+        if self.last_update_time == 0:
+            self.last_update_time = current_time
+            return
         self.phase_time += current_time - self.last_update_time
         self.last_update_time = current_time
 
@@ -150,11 +178,15 @@ class TrafficSignal:
             if self.green_phase is None:
                 self.green_phase = new_phase
                 self.phase_time = 0
-                self.sumo.trafficlight.setRedYellowGreenPhase(self.ts_id, self.green_phase.state)
+                self.sumo.trafficlight.setRedYellowGreenState(self.ts_id, self.green_phase.state)
+                self.next_action_time = current_time + self.delta_rs_update_time
+                return
+            # 未到最小绿灯时长，不转换相位
+            elif self.phase_time < self.min_green_time:
                 self.next_action_time = current_time + self.delta_rs_update_time
                 return
             # 与当前相位相同
-            elif self.green_phase.state == self.green_phase == new_phase.state:
+            elif self.green_phase.state == new_phase.state:
                 # 还未达到绿灯最大时间
                 if self.phase_time < self.max_green_time:
                     self.next_action_time = current_time + self.delta_rs_update_time
@@ -176,7 +208,7 @@ class TrafficSignal:
                     self.next_action_time = current_time + self.delta_rs_update_time
                     return
             # 下一相位与当前相位不同时
-            elif self.green_phase != new_phase.state:
+            elif self.green_phase.state != new_phase.state:
                 yellow_state = ''
                 for i in range(len(new_phase.state)):
                     if (self.green_phase.state[i] == 'G' or self.green_phase.state[i] == 'g') and new_phase.state[
@@ -199,22 +231,58 @@ class TrafficSignal:
             elif self.phase_time >= self.yellow_time:
                 # 清除黄灯相位
                 self.yellow_phase = None
-                self.sumo.trafficlight.setRedYellowGreenState(self.ts_id, self.yellow_phase.state())
+                self.sumo.trafficlight.setRedYellowGreenState(self.ts_id, self.green_phase.state)
                 self.phase_time = 0
                 self.next_action_time = current_time + self.delta_rs_update_time
                 return
+
+    def _compute_pressure(self):
+        incoming = 0
+        outgoing = 0
+        links = self.sumo.trafficlight.getControlledLinks(self.ts_id)
+        for link_group in links:
+            for link in link_group:
+                in_lane = link[0]
+                out_lane = link[1]
+
+                incoming += self.sumo.lane.getLastStepVehicleNumber(in_lane)
+                outgoing += self.sumo.lane.getLastStepVehicleNumber(out_lane)
+        return incoming - outgoing
 
     def compute_reward(self):
         """
         计算路口奖励：基于车辆的等待数
         :return: 当前奖励值
         """
+        # 等待车辆数
         waiting = 0
         for lane in self.lanes:
             waiting += self.sumo.lane.getLastStepHaltingNumber(lane)
 
-        reward = self.last_waiting - waiting
-        self.last_waiting = waiting
+        # 队列长度
+        queue_length = self.get_queue_length()
+
+        # 总等待时间
+        waiting_time = self.get_total_waiting_time()
+
+        # 平均速度
+        mean_speed = self.get_mean_speed()
+
+        # reward计算
+        if self.reward_type == "queue":
+            reward = -queue_length
+        elif self.reward_type == "waiting":
+            reward = -waiting_time
+        elif self.reward_type == "delta_waiting":
+            reward = self.last_waiting - waiting
+            self.last_waiting = waiting
+        elif self.reward_type == "mean_speed":
+            reward = mean_speed
+        elif self.reward_type == "pressure":
+            reward = -self._compute_pressure()
+        else:
+            reward = self.last_waiting - waiting
+            self.last_waiting = waiting
         return reward
 
     def get_total_waiting(self):
