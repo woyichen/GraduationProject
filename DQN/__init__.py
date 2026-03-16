@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import DQN
 
 
 def check_cuda_info():
