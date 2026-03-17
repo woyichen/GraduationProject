@@ -42,10 +42,11 @@ import sys
 import torch
 import torch.nn as nn
 import traci
+import sumolib
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-from environment.env import SumoEnv
+import environment
 from DQN.DQN import Agent
 
 nogui = False
@@ -57,7 +58,7 @@ sumocfg_file = './data/a.sumocfg'
 def main(argv):
     del argv
 
-    env = SumoEnv(
+    env = environment.SumoEnv(
         net_file=FLAGS.net_file,
         route_file=FLAGS.route_file,
         skip_range=FLAGS.skip_range,
