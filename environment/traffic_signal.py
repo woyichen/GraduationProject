@@ -5,7 +5,6 @@ import random
 from gymnasium import spaces
 import traci
 import sumolib
-import traci.constants as tc
 import numpy as np
 from queue import Queue
 

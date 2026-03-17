@@ -5,7 +5,7 @@ import torch.nn as nn
 from datetime import datetime
 from collections import namedtuple
 
-import networks
+from .networks import Network
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -45,9 +45,9 @@ class Agent:
 
         self.network_file = network_file
         # policy网络
-        self.policy_net = networks.Network(self.input_dim, self.n_action, hidden_dim).to(device)
+        self.policy_net = Network(self.state_dim, self.n_action, hidden_dim).to(device)
         # target网络
-        self.target_net = networks.Network(self.input_dim, self.n_action, hidden_dim).to(device)
+        self.target_net = Network(self.state_dim, self.n_action, hidden_dim).to(device)
         # 加载权重
         if network_file:
             self.policy_net.load_state_dict(torch.load(network_file, map_location=device))

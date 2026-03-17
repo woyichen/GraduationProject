@@ -38,11 +38,17 @@ class SumoEnv(gym.Env):
         :param net_file: 路网文件路径
         :param route_file: 路由文件路径
         :param skip_range: 随机跳过的时间范围
-        :param simulation_time: 总模拟时间
-        :param yellow_time: 黄灯持续时间
+        :param simulation_time: 仿真时间
+        :param yellow_time: 黄灯时间
+        :param min_green_time: 最小绿灯时间
+        :param max_green_time: 最大绿灯时间
         :param delta_rs_update_time: 相位更新间隔
-        :param use_gui:是否使用GUI界面
+        :param delta_time:仿真步数
+        :param use_neighbor: 是否有通讯
+        :param use_gui: 是否使用GUI界面
+        :param reward_type: 奖励函数类型
         """
+
         super(SumoEnv, self).__init__()
         # self.sumo = sumo
         self.sumo = None
@@ -55,6 +61,7 @@ class SumoEnv(gym.Env):
         # 总模拟时间
         self.simulation_time = simulation_time
         # 是否使用GUI
+        self.use_gui = use_gui
         self.sumoBinary = 'sumo-gui' if use_gui else 'sumo'
         # 初始化训练状态
         self.train_state = None
@@ -123,6 +130,8 @@ class SumoEnv(gym.Env):
                     '-n', self.net_file,
                     '-r', self.route_file,
                     '--time-to-teleport', '1000']
+        if self.use_gui:
+            sumo_cmd.extend(['--start', '--quit-on-end'])
         traci.start(sumo_cmd)
         self.sumo = traci
 
