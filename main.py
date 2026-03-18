@@ -1,138 +1,171 @@
 import os
-import sys
-from absl import app
-from absl import flags
+import torch
+import numpy as np
+from absl import app, flags
+
+from environment.env import SumoEnvironment
+from replay import ReplayBuffer
+from Model.DQN.DQN import Agent
 
 FLAGS = flags.FLAGS
-# 仿真开始随机跳过的时间范围
-flags.DEFINE_integer('skip_range', 10, 'time range for skip randomly at the beginning')
-# 每次episode的总仿真时间
-flags.DEFINE_float('simulation_time', 30000, 'time for simulation')
-# 黄灯持续时间
-flags.DEFINE_integer('yellow_time', 2, 'time for yellow phase')
-# 最小绿灯时间
-flags.DEFINE_integer('min_green_time', 10, 'time for min green phase')
-# 最长绿灯时间
-flags.DEFINE_integer('max_green_time', 120, 'time for max green phase')
-# 计算奖励的时间间隔，动作的奖励无法立即体现
-flags.DEFINE_integer('delta_rs_update_time', 5, 'time for calculate reward')
-# 模拟步数
-flags.DEFINE_integer('delta_time', 5, '')
-# 路网文件
-flags.DEFINE_string('net_file', './nets/osm.net.xml.gz', 'net file')
-# 车辆路由文件
-flags.DEFINE_string('route_file', './nets/osm.passenger.rou.xml', 'route file')
-# 是否有通讯
-flags.DEFINE_bool('use_neighbor', False, '')
-# 是否使用GUI
-flags.DEFINE_bool('use_gui', True, 'use sumo-gui instead of sumo')
-# 奖励函数类型
-flags.DEFINE_string('reward_type', "delta_waiting", '')
-flags.DEFINE_string('mode', 'train', 'train or test')
-# 训练中的episodes总数
-flags.DEFINE_integer('num_episodes', 301, 'number of episodes')
+flags.DEFINE_string("net_file", 'nets/osm.net.xml.gz', "SUMO network file")
+flags.DEFINE_string("route_file", 'nets/osm.passenger.rou.xml', "SUMO route file")
+flags.DEFINE_bool("use_gui", True, "Use SUMO GUI")
 
-# ε-贪心策略的初始探索率
-flags.DEFINE_float('eps_start', 1.0, '')
-# 最小探索率
-flags.DEFINE_float('eps_end', 0.1, '')
-# ε 衰减的步数（指数衰减公式中的分母）
-flags.DEFINE_integer('eps_decay', 200000, '')
-# 目标网路更新频率
-flags.DEFINE_integer('target_update', 1000, '')
-# 折扣因子 γ
-flags.DEFINE_float('gamma', 0.95, '')
-# 经验回放中采样的批次大小
-flags.DEFINE_integer('batch_size', 32, '')
-flags.DEFINE_integer('buffer_size', 20000, '')
-# 权重存储位置
-flags.DEFINE_string('network_file', './weights/weights.pth', 'net file')
+flags.DEFINE_integer("num_seconds", 3000, "Simulation time")
+flags.DEFINE_integer("delta_time", 5, "Action interval")
+flags.DEFINE_integer("yellow_time", 2, "Yellow phase duration")
+flags.DEFINE_integer("min_green", 10, "Minimum green time")
+flags.DEFINE_integer("max_green", 90, "Maximum green time")
 
-import torch
-import torch.nn as nn
-import traci
-import sumolib
+flags.DEFINE_float('lr', 1e-3, 'Learning rate')
+flags.DEFINE_float('gamma', 0.99, 'Discount factor')
+flags.DEFINE_integer('batch_size', 32, 'Batch size')
+flags.DEFINE_integer('buffer_size', 50000, 'Replay buffer size')
+flags.DEFINE_integer('target_update', 100, 'Target update frequency')
 
-device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+flags.DEFINE_float('eps_start', 1.0, 'Initial epsilon')
+flags.DEFINE_float('eps_end', 0.05, 'Final epsilon')
+flags.DEFINE_float('eps_decay', 50000, 'Epsilon decay')
 
-import environment
-from DQN.DQN import Agent
-from replay import ReplayBuffer
+flags.DEFINE_integer('hidden_dim', 256, 'Hidden layer size')
+flags.DEFINE_bool('double', False, 'Use Double DQN')
+
+flags.DEFINE_integer('episodes', 50, 'Training episodes')
+flags.DEFINE_string('save_path', 'weights', 'Model save path')
+flags.DEFINE_bool('load_model', False, 'Load pretrained model')
+flags.DEFINE_string('model_path', '', 'Path to model')
+
+lst = ['2187544212', '2187544213', '2187544217', '2187544218', 'cluster_2178819374_4839352770_4839352772',
+       'cluster_2178819402_2189318888', 'cluster_2187544206_4839352776', 'cluster_2187544208_4839352781',
+       'cluster_366489708_9203769172']
 
 
 def main(argv):
     del argv
 
-    env = environment.SumoEnv(
+    env = SumoEnvironment(
         net_file=FLAGS.net_file,
         route_file=FLAGS.route_file,
-        skip_range=FLAGS.skip_range,
-        simulation_time=FLAGS.simulation_time,
-        yellow_time=FLAGS.yellow_time,
-        min_green_time=FLAGS.min_green_time,
-        max_green_time=FLAGS.max_green_time,
-        delta_rs_update_time=FLAGS.delta_rs_update_time,
-        delta_time=FLAGS.delta_time,
-        use_neighbor=FLAGS.use_neighbor,
         use_gui=FLAGS.use_gui,
-        reward_type=FLAGS.reward_type,
+        begin_time=0,
+        num_seconds=FLAGS.num_seconds,
+        max_depart_delay=-1,
+        waiting_time_memory=1000,
+        time_to_teleport=-1,
+        delta_time=FLAGS.delta_time,
+        yellow_time=FLAGS.yellow_time,
+        min_green=FLAGS.min_green,
+        max_green=FLAGS.max_green,
+        single_agent=False,
+        reward_fn='pressure',
+        # reward_weights=[],
+        add_system_info=True,
+        add_per_agent_info=True,
+        # sumo_seed=,
+        ts_ids=None,
+        fixed_ts=False,
+        sumo_warnings=True,
+        # additional_sumo_cmd=,
+        # render_mode=
     )
-    states, _ = env.reset()
 
+    ts_ids = env.ts_ids
+    print(ts_ids)
     agents = {}
-    buffers = {}
+    replay_buffers = {}
 
-    for ts_id, state in states.items():
-        state_dim = len(state)
-        action_dim = env.action_space[ts_id].n
+    for ts in ts_ids:
+        state_dim = env.observation_spaces(ts).shape[0]
+        action_dim = env.action_spaces(ts).n
 
-        buffers[ts_id] = ReplayBuffer(FLAGS.buffer_size)
-
-        agents[ts_id] = Agent(
-            mode=FLAGS.mode,
-            replay=buffers[ts_id],
-            target_update=FLAGS.target_update,
+        agents[ts] = Agent(
+            ts_id=ts,
+            state_dim=state_dim,
+            action_dim=action_dim,
+            hidden_dim=FLAGS.hidden_dim,
+            lr=FLAGS.lr,
             gamma=FLAGS.gamma,
+            batch_size=FLAGS.batch_size,
             eps_start=FLAGS.eps_start,
             eps_end=FLAGS.eps_end,
             eps_decay=FLAGS.eps_decay,
-            batch_size=FLAGS.batch_size,
-            state_dim=state_dim,
-            action_dim=action_dim,
+            target_update=FLAGS.target_update,
+            double=FLAGS.double,
+            save_path=FLAGS.save_path
         )
-    env.close()
 
-    for episode in range(FLAGS.num_episodes):
-        states, _ = env.reset()
-        done = False
+        replay_buffers[ts] = ReplayBuffer(
+            capacity=FLAGS.buffer_size,
+            mode='single',
+            ts_ids=ts,
+            state_dim=state_dim,
+            action_dim=action_dim
+        )
 
-        n = 0
-        while not done:
-            print(n)
-            n += 1
+        # 可选加载模型
+        if FLAGS.load_model and FLAGS.model_path != "":
+            agents[ts].load_model(FLAGS.model_path)
+
+    global_step = 0
+
+    # ===== 训练循环 =====
+    for ep in range(FLAGS.episodes):
+        state = env.reset()
+        done = {"__all__": False}
+
+        episode_reward = {ts: 0 for ts in ts_ids}
+
+        while not done["__all__"]:
+
             actions = {}
-            for ts_id in agents:
-                print()
-                actions[ts_id] = agents[ts_id].select_action(
-                    states[ts_id],
-                    buffers[ts_id].size,
-                    False
+
+            # ===== 选择动作 =====
+            for ts in ts_ids:
+                # 注意：SUMO-RL只在time_to_act时提供state
+                if ts not in state:
+                    continue
+
+                action = agents[ts].select_action(
+                    state[ts],
+                    global_step
                 )
 
-            next_states, rewards, done, _, _ = env.step(actions)
+                actions[ts] = action
 
-            for ts_id in agents:
-                buffers[ts_id].add(
-                    states[ts_id],
-                    actions[ts_id],
-                    next_states[ts_id],
-                    rewards[ts_id]
+            # ===== 执行动作 =====
+            # print(actions)
+            next_state, reward, done, info = env.step(actions)
+
+            # ===== 存储经验 =====
+            for ts in actions.keys():
+                if ts not in next_state:
+                    continue
+
+                replay_buffers[ts].add(
+                    state[ts],
+                    actions[ts],
+                    next_state[ts],
+                    reward[ts],
+                    done["__all__"],
+                    None  # 如果未来支持mask，在此传入
                 )
-                agents[ts_id].learn()
 
-            states = next_states
-        print(f"Episode: {episode}, Rewards: {rewards}")
-        env.close()
+                episode_reward[ts] += reward[ts]
+
+            state = next_state
+
+            # ===== 学习 =====
+            for ts in ts_ids:
+                agents[ts].learn(replay_buffers[ts])
+
+            global_step += 1
+
+        # ===== 输出 =====
+        avg_reward = np.mean(list(episode_reward.values()))
+        print(f"Episode {ep} | Avg Reward: {avg_reward:.3f}")
+
+    env.close()
 
 
 if __name__ == "__main__":
