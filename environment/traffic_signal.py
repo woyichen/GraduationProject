@@ -136,6 +136,7 @@ class TrafficSignal:
         self.action_space = spaces.Discrete(len(self.all_green_phases))
         if self.use_neighbor:
             self._set_neighbors()
+        # print(self.ts_id, self.all_green_phases)
 
     def update_phase_time(self):
         """

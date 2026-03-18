@@ -126,6 +126,11 @@ class SumoEnv(gym.Env):
         重置环境
         :return:
         """
+        # if self.sumo is not None:
+        #     try:
+        #         self.sumo.close()
+        #     except:
+        #         pass
         sumo_cmd = [sumolib.checkBinary(self.sumoBinary),
                     '-n', self.net_file,
                     '-r', self.route_file,

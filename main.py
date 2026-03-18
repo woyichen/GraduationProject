@@ -7,7 +7,7 @@ FLAGS = flags.FLAGS
 # 仿真开始随机跳过的时间范围
 flags.DEFINE_integer('skip_range', 10, 'time range for skip randomly at the beginning')
 # 每次episode的总仿真时间
-flags.DEFINE_float('simulation_time', 50000, 'time for simulation')
+flags.DEFINE_float('simulation_time', 30000, 'time for simulation')
 # 黄灯持续时间
 flags.DEFINE_integer('yellow_time', 2, 'time for yellow phase')
 # 最小绿灯时间
@@ -15,7 +15,7 @@ flags.DEFINE_integer('min_green_time', 10, 'time for min green phase')
 # 最长绿灯时间
 flags.DEFINE_integer('max_green_time', 120, 'time for max green phase')
 # 计算奖励的时间间隔，动作的奖励无法立即体现
-flags.DEFINE_integer('delta_rs_update_time', 1, 'time for calculate reward')
+flags.DEFINE_integer('delta_rs_update_time', 5, 'time for calculate reward')
 # 模拟步数
 flags.DEFINE_integer('delta_time', 5, '')
 # 路网文件
@@ -37,7 +37,7 @@ flags.DEFINE_float('eps_start', 1.0, '')
 # 最小探索率
 flags.DEFINE_float('eps_end', 0.1, '')
 # ε 衰减的步数（指数衰减公式中的分母）
-flags.DEFINE_integer('eps_decay', 83000, '')
+flags.DEFINE_integer('eps_decay', 200000, '')
 # 目标网路更新频率
 flags.DEFINE_integer('target_update', 1000, '')
 # 折扣因子 γ
@@ -103,12 +103,16 @@ def main(argv):
     env.close()
 
     for episode in range(FLAGS.num_episodes):
-        states, _ = env.reset()  # 第二次reset
+        states, _ = env.reset()
         done = False
 
+        n = 0
         while not done:
+            print(n)
+            n += 1
             actions = {}
             for ts_id in agents:
+                print()
                 actions[ts_id] = agents[ts_id].select_action(
                     states[ts_id],
                     buffers[ts_id].size,
@@ -128,7 +132,7 @@ def main(argv):
 
             states = next_states
         print(f"Episode: {episode}, Rewards: {rewards}")
-    env.close()
+        env.close()
 
 
 if __name__ == "__main__":
