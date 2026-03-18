@@ -137,6 +137,10 @@ class TrafficSignal:
         if self.use_neighbor:
             self._set_neighbors()
         # print(self.ts_id, self.all_green_phases)
+        self.last_update_time = 0
+        self.phase_time = 0
+        self.next_action_time = 0
+        self.last_waiting = 0
 
     def update_phase_time(self):
         """

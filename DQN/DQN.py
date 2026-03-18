@@ -117,4 +117,4 @@ class Agent:
             self.target_net.load_state_dict(self.policy_net.state_dict())
             time = str(datetime.now()).split(' ')[0]
             time = time.replace('-', '').replace(' ', '_').replace(':', '')
-            torch.save(self.policy_net.state_dict(), f'weights/weights_{time}{self.learn_steps}.pth')
+            torch.save(self.policy_net.state_dict(), f'weights/weights_{time}_{self.learn_steps}.pth')

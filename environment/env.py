@@ -104,6 +104,7 @@ class SumoEnv(gym.Env):
         # self.observation_space = spaces.Box(
         #     low=0, high=1, shape=(len(self.ts_ids),), dtype=np.float32
         # )
+        self.started = False
 
     def _random_skip(self, skip_range):
         for ts in self.traffic_signals.values():
@@ -126,19 +127,27 @@ class SumoEnv(gym.Env):
         重置环境
         :return:
         """
-        # if self.sumo is not None:
-        #     try:
-        #         self.sumo.close()
-        #     except:
-        #         pass
         sumo_cmd = [sumolib.checkBinary(self.sumoBinary),
                     '-n', self.net_file,
                     '-r', self.route_file,
                     '--time-to-teleport', '1000']
         if self.use_gui:
             sumo_cmd.extend(['--start', '--quit-on-end'])
-        traci.start(sumo_cmd)
+        if not self.started:
+            traci.start(sumo_cmd)
+            self.started = True
+        else:
+            traci.load(sumo_cmd[1:])
         self.sumo = traci
+        if self.use_gui:
+            self.sumo.gui.setSchema(traci.gui.DEFAULT_VIEW, "real world")
+            self.skip_range = 0
+
+        # for ts_id in self.ts_ids:
+        #     traci.trafficlight.setProgram(ts_id, "0")
+        #     phase = traci.trafficlight.getPhase(ts_id)
+        #     traci.trafficlight.setPhase(ts_id, phase)
+        #     self.traffic_signals[ts_id].time_since_last_phase_change = 0
 
         for ts in self.traffic_signals.values():
             ts.sumo = self.sumo

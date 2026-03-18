@@ -110,7 +110,7 @@ def main(argv):
             state_dim=state_dim,
             action_dim=action_dim,
         )
-    env.close()
+    # env.close()
 
     for episode in range(FLAGS.num_episodes):
         states, _ = env.reset()
@@ -145,7 +145,7 @@ def main(argv):
 
             states = next_states
         print(f"Episode: {episode}, Rewards: {rewards}")
-        env.close()
+    env.close()
 
 
 if __name__ == "__main__":
