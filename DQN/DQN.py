@@ -64,10 +64,10 @@ class Agent:
         if self.mode == 'train':
             r = random.random()
             eps_threshold = self.eps_end + (self.eps_start - self.eps_end) * math.exp(-1. * steps_done / self.eps_decay)
-            print(r, eps_threshold, end=' ')
+            # print(r, eps_threshold, end=' ')
             if r < eps_threshold:
                 action = random.randrange(self.n_action)
-                print(f"{action}/{self.n_action}", end=' ')
+                # print(f"{action}/{self.n_action}", end=' ')
                 return action
             else:
                 with torch.no_grad():

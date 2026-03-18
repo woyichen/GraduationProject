@@ -211,12 +211,13 @@ class TrafficSignal:
             elif self.green_phase.state != new_phase.state:
                 yellow_state = ''
                 for i in range(len(new_phase.state)):
-                    if (self.green_phase.state[i] == 'G' or self.green_phase.state[i] == 'g') and new_phase.state[
-                        i] == 'r':
+                    if (self.green_phase.state[i] == 'G' or self.green_phase.state[i] == 'g') \
+                            and new_phase.state[i] == 'r':
                         yellow_state += "y"
                     else:
                         yellow_state += self.green_phase.state[i]
                 self.yellow_phase = yellow_state
+                self.green_phase = new_phase
                 self.sumo.trafficlight.setRedYellowGreenState(self.ts_id, self.yellow_phase)
                 self.phase_time = 0
                 self.next_action_time = current_time + self.delta_rs_update_time

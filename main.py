@@ -7,7 +7,7 @@ FLAGS = flags.FLAGS
 # 仿真开始随机跳过的时间范围
 flags.DEFINE_integer('skip_range', 10, 'time range for skip randomly at the beginning')
 # 每次episode的总仿真时间
-flags.DEFINE_float('simulation_time', 30000, 'time for simulation')
+flags.DEFINE_float('simulation_time', 3000, 'time for simulation')
 # 黄灯持续时间
 flags.DEFINE_integer('yellow_time', 2, 'time for yellow phase')
 # 最小绿灯时间
@@ -47,6 +47,16 @@ flags.DEFINE_integer('batch_size', 32, '')
 flags.DEFINE_integer('buffer_size', 20000, '')
 # 权重存储位置
 flags.DEFINE_string('network_file', './weights/weights.pth', 'net file')
+
+flags.DEFINE_list('tls_id', ['cluster_366489708_9203769172',
+                             '2187544218',
+                             '2187544217',
+                             'cluster_2178819402_2189318888',
+                             '2187544212',
+                             '2187544213',
+                             'cluster_2178819374_4839352770_4839352772',
+                             'cluster_2187544206_4839352776',
+                             'cluster_2187544208_4839352781'], '')
 
 import torch
 import torch.nn as nn
@@ -106,19 +116,22 @@ def main(argv):
         states, _ = env.reset()
         done = False
 
-        n = 0
+        # n = 0
         while not done:
-            print(n)
-            n += 1
+            # print(n)
+            # n += 1
             actions = {}
             for ts_id in agents:
-                print()
+                # print()
                 actions[ts_id] = agents[ts_id].select_action(
                     states[ts_id],
                     buffers[ts_id].size,
                     False
                 )
-
+            # print(actions)
+            # for id in FLAGS.tls_id:
+            #     print(actions[id], end='')
+            # print()
             next_states, rewards, done, _, _ = env.step(actions)
 
             for ts_id in agents:
