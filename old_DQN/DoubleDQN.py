@@ -52,46 +52,33 @@ class Agent:
             self.policy_net.load_state_dict(torch.load(network_file, map_location=device))
         self.target_net.load_state_dict(self.policy_net.state_dict())
         self.target_net.eval()
-        self.optimizer = torch.optim.Adam(self.policy_net.parameters(), lr=1e-4)
+        self.optimizer = torch.optim.Adam(self.policy_net.parameters(), lr=0.001)
         self.loss_fn = nn.MSELoss()
         # 训练部署
         self.learn_steps = 0
-
-        # self.optimizer = torch.optim.Adam(self.policy_net.parameters(), lr=0.001)
 
     def select_action(self, state, steps_done, invalid_action):
         state = torch.from_numpy(state).float().unsqueeze(0).to(device)
         if self.mode == 'train':
             r = random.random()
             eps_threshold = self.eps_end + (self.eps_start - self.eps_end) * math.exp(-1. * steps_done / self.eps_decay)
-            # print(r, eps_threshold, end=' ')
+            print(f"{r:.2f}/{eps_threshold:.2f}", end=' ')
             if r < eps_threshold:
                 action = random.randrange(self.n_action)
                 # print(f"{action}/{self.n_action}", end=' ')
                 return action
             else:
                 with torch.no_grad():
-                    _, sorted_indices = torch.sort(self.policy_net(state), descending=True)
+                    q_values = self.policy_net(state)
+                    action = q_values.argmax(dim=1).item()
                     if invalid_action:
-                        return sorted_indices[0, 1].item()
-                    else:
-                        return sorted_indices[0, 0].item()
-                decrease_state = [(original_state[0] + original_state[4]) / 2,
-                                  (original_state[1] + original_state[5]) / 2,
-                                  (original_state[2] + original_state[6]) / 2,
-                                  (original_state[3] + original_state[7]) / 2]
-                congest_phase = [i for i, s in enumerate(decrease_state) if abs(s - 1) < 1e-2]
-                if len(congest_phase) > 0 and invalid_action is False:
-                    return random.choice(congest_phase)
-                else:
-                    return random.randrange(self.n_action)
+                        sorted_idx = torch.argsort(q_values, descending=True)
+                        return sorted_idx[0, 1].item()
+                    return action
         else:
             with torch.no_grad():
-                _, sorted_indices = torch.sort(self.policy_net(state), descending=True)
-                if invalid_action:
-                    return sorted_indices[1]
-                else:
-                    return sorted_indices[0]
+                q_values = self.policy_net(state)
+                return q_values.argmax(dim=1).item()
 
     def learn(self):
         if self.replay.size < self.batch_size:
