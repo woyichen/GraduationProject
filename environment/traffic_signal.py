@@ -169,9 +169,9 @@ class TrafficSignal:
                         yellow_state += p1.state[s]
                 self.yellow_dict[(i, j)] = len(self.all_phases)
                 self.all_phases.append(self.sumo.trafficlight.Phase(self.yellow_time, yellow_state))
-        print("a")
-        for phase in self.all_phases:
-            print(phase.state)
+        # print("a")
+        # for phase in self.all_phases:
+        #     print(phase.state)
         programs = self.sumo.trafficlight.getAllProgramLogics(self.id)
         logic = programs[0]
         logic.type = 0
