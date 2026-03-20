@@ -249,6 +249,9 @@ class SumoEnvironment(gym.Env):
                 self.disp.start()
                 print("Virtual display started.")
 
+        sumo_cmd.append("--log")
+        sumo_cmd.append("sumo_log.txt")
+
         if LIBSUMO:
             traci.start(sumo_cmd)
             self.sumo = traci
@@ -437,6 +440,12 @@ class SumoEnvironment(gym.Env):
         """
         执行一步SUMO仿真
         """
+        # try:
+        #     self.sumo.simulationStep()
+        # except traci.exceptions.FatalTraCIError as e:
+        #     print(f"FatalTraCIError at time {self.sim_step}: {e}")
+        #     # 可选：记录最后状态后退出
+        #     raise
         self.sumo.simulationStep()
         self.num_arrived_vehicles += self.sumo.simulation.getArrivedNumber()
         self.num_departed_vehicles += self.sumo.simulation.getDepartedNumber()

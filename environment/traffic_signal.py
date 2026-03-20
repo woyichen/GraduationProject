@@ -2,6 +2,8 @@ import os
 import sys
 from typing import Callable, List, Union
 
+from traci.exceptions import TraCIException
+
 if "SUMO_HOME" in os.environ:
     tools = os.path.join(os.environ["SUMO_HOME"], "tools")
     sys.path.append(tools)
@@ -111,12 +113,6 @@ class TrafficSignal:
         """
         neighbors = set()
         tls_ids = set(self.sumo.trafficlight.getIDList())
-        # print(tls_ids)
-        # print(len(tls_ids))
-        # links = self.sumo.trafficlight.getControlledLinks(self.ts_id)
-        # print(links)
-        # for link in links:
-        #     print(link)
         path = set()
         path.add(self.id)
         q = Queue()
@@ -173,7 +169,9 @@ class TrafficSignal:
                         yellow_state += p1.state[s]
                 self.yellow_dict[(i, j)] = len(self.all_phases)
                 self.all_phases.append(self.sumo.trafficlight.Phase(self.yellow_time, yellow_state))
-
+        print("a")
+        for phase in self.all_phases:
+            print(phase.state)
         programs = self.sumo.trafficlight.getAllProgramLogics(self.id)
         logic = programs[0]
         logic.type = 0
@@ -189,7 +187,8 @@ class TrafficSignal:
     def update(self):
         """更新交通信号状态"""
         self.time_since_last_phase_change += 1
-        if self.is_yellow and self.time_since_last_phase_change == self.time_since_last_phase_change:
+        if self.is_yellow and self.time_since_last_phase_change >= self.yellow_time:
+            # print(self.id, self.all_phases[self.green_phase].state)
             self.sumo.trafficlight.setRedYellowGreenState(self.id, self.all_phases[self.green_phase].state)
             self.is_yellow = False
 
@@ -198,10 +197,13 @@ class TrafficSignal:
             new_phase = (self.green_phase + 1) % self.num_green_phases
 
         if self.green_phase == new_phase or self.time_since_last_phase_change < self.yellow_time + self.min_green:
+            # print(self.id, self.all_phases[self.green_phase].state)
             self.sumo.trafficlight.setRedYellowGreenState(self.id, self.all_phases[self.green_phase].state)
             self.next_action_time = self.env.sim_step + self.delta_time
         else:
             yellow_phase_index = self.yellow_dict[(self.green_phase, new_phase)]
+            # 可以选择不设置，或者用原状态代替
+            # print(self.all_phases[yellow_phase_index].state)
             self.sumo.trafficlight.setRedYellowGreenState(self.id, self.all_phases[yellow_phase_index].state)
             self.green_phase = new_phase
             self.next_action_time = self.env.sim_step + self.delta_time
@@ -254,7 +256,7 @@ class TrafficSignal:
         return -self.get_total_queued()
 
     def get_total_queued(self) -> int:
-        return sum(self.sumo.lane.getLastStepVehicleNumber(lane for lane in self.lanes))
+        return sum(self.sumo.lane.getLastStepVehicleNumber(lane) for lane in self.lanes)
 
     def _diff_waiting_time_reward(self):
         ts_wait = sum(self.get_accumulated_waiting_time_per_lane()) / 100.0
@@ -262,7 +264,7 @@ class TrafficSignal:
         self.last_ts_waiting_time = ts_wait
         return reward
 
-    def get_accumulated_waiting_time_per_lane(self):
+    def get_accumulated_waiting_time_per_lane(self) -> list[float]:
         """每个进口车道的累计等待时间"""
         wait_time_per_lane = []
         for lane in self.lanes:
@@ -271,11 +273,12 @@ class TrafficSignal:
             for veh in veh_list:
                 veh_lane = self.sumo.vehicle.getLaneID(veh)
                 acc = self.sumo.vehicle.getAccumulatedWaitingTime(veh)
+
                 if veh not in self.env.vehicles:
                     self.env.vehicles[veh] = {veh_lane: acc}
                 else:
                     self.env.vehicles[veh][veh_lane] = acc - sum(
-                        [self.sumo.vehicles[veh][lane] for lane in self.env.vehicles[veh].keys() if lane != veh_lane]
+                        [self.env.vehicles[veh][lane] for lane in self.env.vehicles[veh].keys() if lane != veh_lane]
                     )
                 wait_time_per_lane.append(wait_time)
             return wait_time_per_lane
@@ -306,16 +309,16 @@ class TrafficSignal:
         ]
         return [min(1, queue) for queue in lanes_queue]
 
-    # @classmethod
-    # def register_reward_fn(cls, fn: Callable):
-    #     """
-    #     注册一个自定义奖励桉树到类字典中
-    #     :param fn: 要注册的奖励函数
-    #     :return:
-    #     """
-    #     if fn.__name__ in cls.reward_fns.keys():
-    #         raise KeyError(f"Reward functino{fn.__name__} already exists")
-    #     cls.reward_fns[fn.__name__] = fn
+    @classmethod
+    def register_reward_fn(cls, fn: Callable):
+        """
+        注册一个自定义奖励桉树到类字典中
+        :param fn: 要注册的奖励函数
+        :return:
+        """
+        if fn.__name__ in cls.reward_fns.keys():
+            raise KeyError(f"Reward functino{fn.__name__} already exists")
+        cls.reward_fns[fn.__name__] = fn
 
     # 奖励函数映射字典
     reward_fns = {
@@ -324,20 +327,3 @@ class TrafficSignal:
         "queue": _queue_reward,
         "pressure": _pressure_reward,
     }
-
-    # if __name__ == "__main__":
-    #     file_path = "../nets/osm.net.xml.gz"
-    #     # tls_id = "cluster_366489708_9203769172"
-    #     tls_id = "2187544212"
-    #     TrafficSignal = TrafficSignal(
-    #         env=,
-    #         ts_id=tls_id,
-    #         delta_time=1,
-    #         yellow_time=5,
-    #         min_green=20,
-    #         max_green=120,
-    #         begin_time=0,
-    #         reward_fn=,
-    #         reward_weights=None,
-    #         sumo=,
-    #     )

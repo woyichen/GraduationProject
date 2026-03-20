@@ -233,10 +233,11 @@ desktop.ini
 nets/
 data/
 old_weights/
+weights/
 test.py
 results/
 old_environment/
 old_DQN/
-MAAC/
 old_*
+sumo_log.txt
 # ============================
