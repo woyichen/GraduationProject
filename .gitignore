@@ -230,7 +230,7 @@ desktop.ini
 
 # ============================
 # 自定义忽略
-nets/
+#nets/
 data/
 old_weights/
 weights/
