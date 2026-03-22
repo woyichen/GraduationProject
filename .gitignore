@@ -240,4 +240,5 @@ old_environment/
 old_DQN/
 old_*
 sumo_log.txt
+history/
 # ============================

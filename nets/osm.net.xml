@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<!-- generated on 2026-03-20T09:15:47.903590+08:00 by Eclipse SUMO netedit 1.25.0
+<!-- generated on 2026-03-22T15:22:59.254586+08:00 by Eclipse SUMO netedit 1.25.0
 <neteditConfiguration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/neteditConfiguration.xsd">
 
     <input>
@@ -1277,76 +1277,76 @@
     </edge>
 
     <tlLogic id="2187544212" type="static" programID="0" offset="0">
-        <phase duration="35" state="grrGGGrgrrGGGr"/>
-        <phase duration="5"  state="grrgyyrgrrgyyr"/>
-        <phase duration="6"  state="grrgrrGgrrgrrG"/>
-        <phase duration="5"  state="grrgrrygrrgrry"/>
-        <phase duration="34" state="GGggrrrGGggrrr"/>
-        <phase duration="5"  state="gyygrrrgyygrrr"/>
+        <phase duration="30" state="grrGGGrgrrGGGr"/>
+        <phase duration="3"  state="grrgyyrgrrgyyr"/>
+        <phase duration="11" state="grrgrrGgrrgrrG"/>
+        <phase duration="3"  state="grrgrrygrrgrry"/>
+        <phase duration="40" state="GGggrrrGGggrrr"/>
+        <phase duration="3"  state="gyygrrrgyygrrr"/>
     </tlLogic>
     <tlLogic id="2187544213" type="static" programID="0" offset="0">
         <phase duration="35" state="GGGrgrrGGGrgrr"/>
-        <phase duration="5"  state="gyyrgrrgyyrgrr"/>
-        <phase duration="6"  state="grrGgrrgrrGgrr"/>
-        <phase duration="5"  state="grrygrrgrrygrr"/>
+        <phase duration="3"  state="gyyrgrrgyyrgrr"/>
+        <phase duration="12" state="grrGgrrgrrGgrr"/>
+        <phase duration="3"  state="grrygrrgrrygrr"/>
         <phase duration="34" state="grrrGGggrrrGGg"/>
-        <phase duration="5"  state="grrrgyygrrrgyy"/>
+        <phase duration="3"  state="grrrgyygrrrgyy"/>
     </tlLogic>
     <tlLogic id="2187544217" type="static" programID="0" offset="0">
         <phase duration="29" state="grrrGGGGrrrrrgrrrGGrrrrGG"/>
-        <phase duration="5"  state="grrrgyyyrrrrrgrrrgyrrrryy"/>
+        <phase duration="3"  state="grrrgyyyrrrrrgrrrgyrrrryy"/>
         <phase duration="15" state="grrrgrrrGGGGGgrrrgrGGGGrr"/>
-        <phase duration="5"  state="grrrgrrryyyyygrrrgryyyyrr"/>
+        <phase duration="3"  state="grrrgrrryyyyygrrrgryyyyrr"/>
         <phase duration="20" state="GGGrgrrrrrrrrGGGrgrrrrrrr"/>
-        <phase duration="5"  state="gyyrgrrrrrrrrgyyrgrrrrrrr"/>
-        <phase duration="6"  state="grrGgrrrrrrrrgrrGgrrrrrrr"/>
-        <phase duration="5"  state="grrygrrrrrrrrgrrygrrrrrrr"/>
+        <phase duration="3"  state="gyyrgrrrrrrrrgyyrgrrrrrrr"/>
+        <phase duration="14" state="grrGgrrrrrrrrgrrGgrrrrrrr"/>
+        <phase duration="3"  state="grrygrrrrrrrrgrrygrrrrrrr"/>
     </tlLogic>
     <tlLogic id="2187544218" type="static" programID="0" offset="0">
-        <phase duration="29" state="GrrGGGgrrrGGrrGGgrrr"/>
-        <phase duration="5"  state="grryyygrrrgyrryygrrr"/>
-        <phase duration="11" state="gGGrrrgrrrgrGGrrgrrr"/>
-        <phase duration="5"  state="gyyrrrgrrrgryyrrgrrr"/>
-        <phase duration="29" state="grrrrrGGGrgrrrrrGGGr"/>
-        <phase duration="5"  state="grrrrrgyyrgrrrrrgyyr"/>
-        <phase duration="6"  state="grrrrrgrrGgrrrrrgrrG"/>
-        <phase duration="5"  state="grrrrrgrrygrrrrrgrry"/>
+        <phase duration="27" state="GrrGGGgrrrGGrrGGgrrr"/>
+        <phase duration="3"  state="grryyygrrrgyrryygrrr"/>
+        <phase duration="15" state="gGGrrrgrrrgrGGrrgrrr"/>
+        <phase duration="3"  state="gyyrrrgrrrgryyrrgrrr"/>
+        <phase duration="27" state="grrrrrGGGrgrrrrrGGGr"/>
+        <phase duration="3"  state="grrrrrgyyrgrrrrrgyyr"/>
+        <phase duration="9"  state="grrrrrgrrGgrrrrrgrrG"/>
+        <phase duration="3"  state="grrrrrgrrygrrrrrgrry"/>
     </tlLogic>
     <tlLogic id="cluster_2178819374_4839352770_4839352772" type="static" programID="0" offset="0">
         <phase duration="33" state="ggrrGGGGGGGr"/>
-        <phase duration="6"  state="ggrrgyyyyyyr"/>
-        <phase duration="6"  state="ggrrgrrrrrrG"/>
-        <phase duration="6"  state="ggrrgrrrrrry"/>
+        <phase duration="3"  state="ggrrgyyyyyyr"/>
+        <phase duration="15" state="ggrrgrrrrrrG"/>
+        <phase duration="3"  state="ggrrgrrrrrry"/>
         <phase duration="33" state="GGGGGrrrrrrr"/>
-        <phase duration="6"  state="ggyyGrrrrrrr"/>
+        <phase duration="3"  state="ggyyGrrrrrrr"/>
     </tlLogic>
     <tlLogic id="cluster_2178819402_2189318888" type="static" programID="0" offset="0">
-        <phase duration="30" state="gggrrrGGGGrrrGGGr"/>
-        <phase duration="6"  state="gggrrrgyyyrrryyyr"/>
-        <phase duration="15" state="gggrrrgrrrGGGrrrG"/>
-        <phase duration="6"  state="gggrrrgrrryyyrrry"/>
-        <phase duration="27" state="GGGGGGGrrrrrrrrrr"/>
-        <phase duration="6"  state="gggyyyGrrrrrrrrrr"/>
+        <phase duration="36" state="gggrrrGGGGrrrGGGr"/>
+        <phase duration="3"  state="gggrrrgyyyrrryyyr"/>
+        <phase duration="24" state="gggrrrgrrrGGGrrrG"/>
+        <phase duration="3"  state="gggrrrgrrryyyrrry"/>
+        <phase duration="21" state="GGGGGGGrrrrrrrrrr"/>
+        <phase duration="3"  state="gggyyyGrrrrrrrrrr"/>
     </tlLogic>
     <tlLogic id="cluster_2187544206_4839352776" type="actuated" programID="0" offset="0">
-        <phase duration="35" state="gGGGGgggrr"/>
-        <phase duration="5"  state="gyyyyyggrr"/>
+        <phase duration="50" state="gGGGGgggrr"/>
+        <phase duration="3"  state="gyyyyyggrr"/>
         <phase duration="34" state="grrrrrGGGG"/>
-        <phase duration="5"  state="grrrrrggyy"/>
+        <phase duration="3"  state="grrrrrggyy"/>
     </tlLogic>
     <tlLogic id="cluster_2187544208_4839352781" type="static" programID="0" offset="0">
-        <phase duration="40" state="grrrgGGggrrrgGGg"/>
-        <phase duration="5"  state="grrrgyyygrrrgyyy"/>
-        <phase duration="40" state="gGGggrrrgGGggrrr"/>
-        <phase duration="5"  state="gyyygrrrgyyygrrr"/>
+        <phase duration="42" state="grrrgGGggrrrgGGg"/>
+        <phase duration="3"  state="grrrgyyygrrrgyyy"/>
+        <phase duration="42" state="gGGggrrrgGGggrrr"/>
+        <phase duration="3"  state="gyyygrrrgyyygrrr"/>
     </tlLogic>
     <tlLogic id="cluster_366489708_9203769172" type="static" programID="0" offset="0">
         <phase duration="33" state="rrrrrrGGGGGGrrr"/>
-        <phase duration="6"  state="rrrrrryyyyyyrrr"/>
-        <phase duration="6"  state="rrrrrrrrrrrrGGG"/>
-        <phase duration="6"  state="rrrrrrrrrrrryyy"/>
+        <phase duration="3"  state="rrrrrryyyyyyrrr"/>
+        <phase duration="15" state="rrrrrrrrrrrrGGG"/>
+        <phase duration="3"  state="rrrrrrrrrrrryyy"/>
         <phase duration="33" state="GGGGGGrrrrrrrrr"/>
-        <phase duration="6"  state="yyyyyyrrrrrrrrr"/>
+        <phase duration="3"  state="yyyyyyrrrrrrrrr"/>
     </tlLogic>
 
     <junction id="10759354856" type="dead_end" x="1187.69" y="0.00" incLanes="831076606_0 831076606_1" intLanes="" shape="1187.69,0.00 1181.82,-2.54 1187.69,0.00"/>
