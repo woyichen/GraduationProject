@@ -6,7 +6,7 @@ import multiprocessing as mp
 # from absl import app, flags
 
 from environment.env import SumoEnvironment
-from replay import ReplayBuffer
+from replay.replay_buffer import ReplayBuffer
 from Model.DQN.DQN import Agent
 import draw
 
@@ -81,6 +81,7 @@ config = {
 lst = ['2187544212', '2187544213', '2187544217', '2187544218', 'cluster_2178819374_4839352770_4839352772',
        'cluster_2178819402_2189318888', 'cluster_2187544206_4839352776', 'cluster_2187544208_4839352781',
        'cluster_366489708_9203769172']
+modes = ['fixed', 'dqn', 'ddqn']
 
 
 def train(mode: str, return_dict, seed: int = 42):
@@ -251,7 +252,6 @@ def main():
     manager = mp.Manager()
     return_dict = manager.dict()
     processes = []
-    modes = ['fixed', 'dqn', 'ddqn']
     for mode in modes:
         p = mp.Process(target=train, args=(mode, return_dict))
         p.start()
@@ -261,7 +261,7 @@ def main():
         p.join()
 
     results = dict(return_dict)
-    print(results)
+    # print(results)
     df = pd.DataFrame({
         # "episode": np.arange(FLAGS.episodes),
         "episode": np.arange(config["episodes"]),
@@ -327,7 +327,7 @@ def main():
         save_dir=f"{config['result_folder_name']}/reward",
     )
     draw.plot_multi_metric(
-        {k: results[k]['reward'] for k in modes},
+        {k: results[k]['speed'] for k in modes},
         title="Speed Comparison",
         ylabel="Speed",
         filename="speed",
@@ -335,7 +335,7 @@ def main():
         save_dir=f"{config['result_folder_name']}/speed",
     )
     draw.plot_multi_metric(
-        {k: results[k]['reward'] for k in modes},
+        {k: results[k]['waiting'] for k in modes},
         title="Waiting Time Comparison",
         ylabel="Waiting Time",
         filename="waiting_time",
@@ -347,3 +347,50 @@ def main():
 if __name__ == "__main__":
     # app.run(main)
     main()
+
+    # # 读取 CSV 文件
+    # df = pd.read_csv(f"{config['result_folder_name']}/compare.csv")
+    #
+    # # 获取所有列名
+    # columns = df.columns.tolist()
+    #
+    # # 提取所有模式名（通过 _reward 后缀）
+    # modes = set()
+    # for col in columns:
+    #     if col.endswith('_reward'):
+    #         mode = col[:-7]  # 去掉 "_reward"
+    #         modes.add(mode)
+    #
+    # # 重构 results
+    # results = {}
+    # for mode in modes:
+    #     results[mode] = {
+    #         'reward': df[f"{mode}_reward"].tolist(),
+    #         'speed': df[f"{mode}_speed"].tolist(),
+    #         'waiting': df[f"{mode}_waiting"].tolist()
+    #     }
+    #
+    # draw.plot_multi_metric(
+    #     {k: results[k]['reward'] for k in modes},
+    #     title="Reward Comparison",
+    #     ylabel="Reward",
+    #     filename="reward",
+    #     # save_dir=f"{FLAGS.result_folder_name}/reward",
+    #     save_dir=f"{config['result_folder_name']}/reward",
+    # )
+    # draw.plot_multi_metric(
+    #     {k: results[k]['speed'] for k in modes},
+    #     title="Speed Comparison",
+    #     ylabel="Speed",
+    #     filename="speed",
+    #     # save_dir=f"{FLAGS.result_folder_name}/speed",
+    #     save_dir=f"{config['result_folder_name']}/speed",
+    # )
+    # draw.plot_multi_metric(
+    #     {k: results[k]['waiting'] for k in modes},
+    #     title="Waiting Time Comparison",
+    #     ylabel="Waiting Time",
+    #     filename="waiting_time",
+    #     # save_dir=f"{FLAGS.result_folder_name}/waiting_time",
+    #     save_dir=f"{config['result_folder_name']}/waiting_time",
+    # )

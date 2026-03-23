@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.optim as optim
 
 from Model.DQN.networks import Network
-from replay import ReplayBuffer
+from replay.replay_buffer import ReplayBuffer
 
 
 class Agent:
