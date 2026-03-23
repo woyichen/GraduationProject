@@ -8,7 +8,7 @@ if "SUMO_HOME" in os.environ:
     tools = os.path.join(os.environ["SUMO_HOME"], "tools")
     sys.path.append(tools)
 else:
-    raise ImportError("Please declare the old_environment variable 'SUMO_HOME'")
+    raise ImportError("Please declare the environment variable 'SUMO_HOME'")
 import numpy as np
 from gymnasium import spaces
 from queue import Queue
@@ -65,7 +65,9 @@ class TrafficSignal:
         # 下次执行动作的时间
         self.next_action_time = begin_time
         # 上时刻的总等待时间
-        self.last_ts_waiting_time = None
+        self.last_ts_waiting_time = 0.0
+
+        self.last_reward = None
         # 奖励函数
         self.reward_fn = reward_fn
         # 奖励权重
@@ -92,13 +94,16 @@ class TrafficSignal:
         # 入口车道，去重，保持顺序
         self.lanes = list(dict.fromkeys(self.sumo.trafficlight.getControlledLanes(self.id)))
         # 出口车道
+        # print(self.sumo.trafficlight.getControlledLinks(self.id))
         self.out_lanes = [link[0][1] for link in self.sumo.trafficlight.getControlledLinks(self.id) if link]
+        self.out_lanes = list(set(self.out_lanes))
         # 所有车道长度
         self.lanes_length = {lane: self.sumo.lane.getLength(lane) for lane in self.lanes + self.out_lanes}
         # 观测空间由观测函数决定
         self.observation_space = self.observation_fn.observation_space()
         # 动作空间
         self.action_space = spaces.Discrete(self.num_green_phases)
+        self.rewards = {}
         # 是否使用邻居信息
         self.neighbor_flag = neighbor
         if self.neighbor_flag:
@@ -193,6 +198,7 @@ class TrafficSignal:
             self.is_yellow = False
 
     def set_next_phase(self, new_phase: int):
+        new_phase = int(new_phase)
         if new_phase == self.green_phase and self.time_since_last_phase_change >= self.max_green:
             new_phase = (self.green_phase + 1) % self.num_green_phases
 
@@ -215,6 +221,15 @@ class TrafficSignal:
         return self.observation_fn()
 
     def compute_reward(self) -> Union[float, np.ndarray]:
+        reward_values = []
+        for reward_fn in self.reward_fns:
+            reward_values.append(self.reward_fns[reward_fn](self))
+        reward_values = np.array(reward_values)
+        # reward_values = np.array(self.rewrad_fns[reward_fn](self) for reward_fn in self.reward_fns)
+        self.rewards = {
+            name: float(reward_values[i])
+            for i, name in enumerate(self.reward_fns)
+        }
         if self.reward_dim == 1:
             self.last_reward = self.reward_list[0](self)
         else:
@@ -224,14 +239,21 @@ class TrafficSignal:
         return self.last_reward
 
     # 奖励函数
+    # def _pressure_reward(self):
+    #     return self.get_pressure()
+    #
+    # def get_pressure(self):
+    #     return sum(
+    #         self.sumo.lane.getLastStepVehicleNumber(lane) for lane in self.out_lanes
+    #     ) - sum(
+    #         self.sumo.lane.getLastStepVehicleNumber(lane) for lane in self.lanes)
     def _pressure_reward(self):
-        return self.get_pressure()
+        return -self.get_pressure()
 
     def get_pressure(self):
-        return sum(
-            self.sumo.lane.getLastStepVehicleNumber(lane) for lane in self.out_lanes
-        ) - sum(
-            self.sumo.lane.getLastStepVehicleNumber(lane) for lane in self.lanes)
+        incoming = sum(self.sumo.lane.getLastStepVehicleNumber(lane) for lane in self.lanes)
+        outgoing = sum(self.sumo.lane.getLastStepVehicleNumber(lane) for lane in self.out_lanes)
+        return incoming - outgoing
 
     def _average_speed_reward(self):
         return self.get_average_speed()
@@ -260,7 +282,7 @@ class TrafficSignal:
 
     def _diff_waiting_time_reward(self):
         ts_wait = sum(self.get_accumulated_waiting_time_per_lane()) / 100.0
-        reward = self.last_ts_waiting_time = ts_wait
+        reward = self.last_ts_waiting_time - ts_wait
         self.last_ts_waiting_time = ts_wait
         return reward
 
@@ -280,7 +302,8 @@ class TrafficSignal:
                     self.env.vehicles[veh][veh_lane] = acc - sum(
                         [self.env.vehicles[veh][lane] for lane in self.env.vehicles[veh].keys() if lane != veh_lane]
                     )
-                wait_time_per_lane.append(wait_time)
+                    wait_time += self.env.vehicles[veh][veh_lane]
+            wait_time_per_lane.append(wait_time)
             return wait_time_per_lane
 
     def _observation_fn_default(self):
