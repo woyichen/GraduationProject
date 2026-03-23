@@ -367,6 +367,10 @@ class SumoEnvironment(gym.Env):
         if self.add_per_agent_info:
             # 添加每个智能体的信息
             info.update(self._get_per_agent_info())
+        reward_components = {}
+        for ts in self.ts_ids:
+            reward_components[ts] = self.traffic_signals[ts].rewards
+        info["reward_components"] = reward_components
         self.metrics.append(info.copy())
         return info
 
