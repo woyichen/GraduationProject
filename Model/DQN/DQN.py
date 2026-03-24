@@ -1,3 +1,4 @@
+import os
 import math
 import random
 import torch
@@ -109,7 +110,7 @@ class Agent:
             'target_net': self.target_net.state_dict(),
             'optimizer': self.optimizer.state_dict(),
             'step': step
-        }, f"{self.save_path}/{self.ts_id}/dqn_{step}.pth")
+        }, f"{self.save_path}/{self.ts_id}/_{step}.pth")
 
     def load_model(self, file_path):
         checkpoint = torch.load(file_path, map_location=self.device)
