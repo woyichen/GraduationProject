@@ -1,0 +1,44 @@
+config = {
+    "net_file": "nets/osm.net.xml.gz",
+    "route_file": 'nets/osm.passenger.rou.xml',
+    "use_gui": False,
+    "num_seconds": 3000,
+    "delta_time": 5,
+    "yellow_time": 2,
+    "min_green": 10,
+    "max_green": 90,
+
+    "lr": 1e-4,
+    "gamma": 0.99,
+    "batch_size": 64,
+    "buffer_size": 50000,
+    "target_update": 500,
+    "seed": 42,
+
+    "eps_start": 1.0,
+    "eps_end": 0.05,
+    "eps_decay": 200000,
+
+    "hidden_dim": 512,
+    "episodes": 1500,
+
+    "reward_fn": ["queue", "average-speed"],
+    "reward_weights": [0.6, 10],
+    # "reward_fn": "queue",
+    # "reward_weights": [],
+
+    "DQN_save_path": 'weights/DQN',
+    "DoubleDQN_save_path": "weights/DoubleDQN",
+    "VDN_save_path": "weights/VDN",
+    "MAAC_save_path": "weights/MAAC",
+    "load_model": False,
+    "model_path": '',
+
+    "result_folder": "results/",
+    "result_folder_name": "results",
+    "ts_lst": ['2187544212', '2187544213', '2187544217', '2187544218', 'cluster_2178819374_4839352770_4839352772',
+               'cluster_2178819402_2189318888', 'cluster_2187544206_4839352776', 'cluster_2187544208_4839352781',
+               'cluster_366489708_9203769172'],
+    "modes": ['fixed', 'dqn', 'ddqn', 'vdn'],
+    "reward_keys": ['diff-waiting-time', 'average-speed', 'queue', 'pressure'],
+}
