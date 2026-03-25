@@ -22,7 +22,7 @@ class VDN(nn.Module):
             agent.target_net.load_state_dict(agent.policy_net.state_dict())
             agent.target_net.to(device)
             agent.policy_net.to(device)
-            agent.optimizer = optim.Adam(agent.target_net.parameters(), lr=agent.lr)
+            # agent.optimizer = optim.Adam(agent.policy_net.parameters(), lr=agent.lr)
 
     def update(self, replay_buffer, batch_size):
         """
