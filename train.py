@@ -1,3 +1,4 @@
+import time
 import numpy as np
 from config import config
 from environment.env import SumoEnvironment
@@ -84,6 +85,8 @@ def train(mode: str, return_dict, seed: int = 42):
 
     for ep in range(config["episodes"]):
         state = env.reset()
+        sim_start_time = env.sim_step
+        real_start_time = time.time()
         done = {"__all__": False}
         episode_reward = {ts: 0 for ts in ts_ids}
 
@@ -146,10 +149,11 @@ def train(mode: str, return_dict, seed: int = 42):
                 agg.setdefault(k, []).append(v)
         agg = {k: np.mean(v) for k, v in agg.items()}
         episode_all_rewards.append(agg)
-        # print(f"Episode {ep} | Avg Reward: {avg_reward:.3f}")
+        sim_end_time = env.sim_step
+        real_end_time = time.time()
         print(f"[{mode}] "
               f"Ep {ep} | Reward: {episode_rewards[-1]:.3f} | "
-              f"Speed: {episode_speed[-1]:.3f}")
+              f"SimTime: {sim_end_time - sim_start_time:.0f}s | RealTime: {real_end_time - real_start_time:.0f}s")
     env.close()
     result = {
         "reward": episode_rewards,
@@ -229,6 +233,8 @@ def train_vdn(mode: str, return_dict, seed: int = 42):
 
     for ep in range(config["episodes"]):
         state = env.reset()
+        sim_start_time = env.sim_step
+        real_start_time = time.time()
         done = {"__all__": False}
         episode_reward = {ts: 0 for ts in ts_ids}
         while not done["__all__"]:
@@ -261,11 +267,11 @@ def train_vdn(mode: str, return_dict, seed: int = 42):
                 agg.setdefault(k, []).append(v)
         agg = {k: np.mean(v) for k, v in agg.items()}
         episode_all_rewards.append(agg)
-        # print(f"Episode {ep} | Avg Reward: {avg_reward:.3f}")
+        sim_end_time = env.sim_step
+        real_end_time = time.time()
         print(f"[{mode}] "
               f"Ep {ep} | Reward: {episode_rewards[-1]:.3f} | "
-              f"Speed: {episode_speed[-1]:.3f}")
-
+              f"SimTime: {sim_end_time - sim_start_time:.0f}s | RealTime: {real_end_time - real_start_time:.0f}s")
 
     env.close()
     result = {
@@ -276,6 +282,7 @@ def train_vdn(mode: str, return_dict, seed: int = 42):
     }
     return_dict[mode] = result
     return result
+
 
 if __name__ == "__main__":
     train_vdn()
