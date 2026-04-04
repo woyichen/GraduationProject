@@ -4,9 +4,13 @@ import random
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import numpy as np
 
 from Model.DQN.networks import Network
+from Model.DQN.attention import CommAttention
 from replay.replay_buffer import ReplayBuffer
+
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 class Agent:
@@ -24,11 +28,14 @@ class Agent:
                  target_update,
                  double,
                  save_path,
+                 comm_flag=False,
+                 n_agents=0,
+                 comm_embed_dim=64,
+                 neighbors=None,
                  ):
         self.ts_id = ts_id
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.policy_net = Network(state_dim, action_dim, hidden_dim).to(self.device)
-        self.target_net = Network(state_dim, action_dim, hidden_dim).to(self.device)
+        self.policy_net = Network(state_dim, action_dim, hidden_dim).to(device)
+        self.target_net = Network(state_dim, action_dim, hidden_dim).to(device)
         self.target_net.load_state_dict(self.policy_net.state_dict())
 
         self.lr = lr
@@ -47,8 +54,20 @@ class Agent:
         self.double = double
 
         self.save_path = save_path
+        self.comm_flag = comm_flag
+        if comm_flag:
+            self.n_agents = n_agents
+            self.comm_embed_dim = comm_embed_dim
+            self.state_dim = state_dim
+            self.obs_encoder = nn.Linear(state_dim, comm_embed_dim).to(device)
+            self.comm = CommAttention(comm_embed_dim, comm_embed_dim).to(device)
+            self.obs_embed = nn.Linear(self.state_dim, self.comm_embed_dim).to(device)
+            input_dim = self.state_dim + self.comm_embed_dim
+            self.policy_net = Network(input_dim, action_dim, hidden_dim).to(device)
+            self.target_net = Network(input_dim, action_dim, hidden_dim).to(device)
+            self.target_net.load_state_dict(self.policy_net.state_dict())
 
-    def select_action(self, state, step, action_mask=None):
+    def select_action(self, state, step, comm_vec=None, action_mask=None):
         eps = self.eps_end + (self.eps_start - self.eps_end) * math.exp(-1. * step / self.eps_decay)
 
         if random.random() < eps:
@@ -57,8 +76,14 @@ class Agent:
                 return valid[torch.randint(len(valid), (1,))].item()
             return random.randrange(self.action_dim)
         with torch.no_grad():
-            state = torch.tensor(state, dtype=torch.float32).unsqueeze(0).to(self.device)
-            q = self.policy_net(state).squeeze(0)
+            if self.comm_flag and comm_vec is not None:
+                state_t = torch.tensor(state, dtype=torch.float32).unsqueeze(0).to(device)
+                comm_t = torch.tensor(comm_vec, dtype=torch.float32).unsqueeze(0).to(device)
+                combined = torch.cat([state_t, comm_t], dim=1)
+                q = self.policy_net(combined).squeeze(0)
+            else:
+                state_t = torch.tensor(state, dtype=torch.float32).unsqueeze(0).to(device)
+                q = self.policy_net(state_t).squeeze(0)
             if action_mask is not None:
                 mask = torch.tensor(action_mask, device=q.device)
                 q[mask == 0] = -1e9
@@ -69,11 +94,11 @@ class Agent:
             return
 
         s, a, s_, r, d, mask = replay.sample(self.batch_size)
-        s = s.float().to(self.device)
-        s_ = s_.float().to(self.device)
-        a = a.long().to(self.device)
-        r = r.float().to(self.device)
-        d = d.float().to(self.device)
+        s = s.float().to(device)
+        s_ = s_.float().to(device)
+        a = a.long().to(device)
+        r = r.float().to(device)
+        d = d.float().to(device)
 
         # a = a.unsqueeze(1)
         q = self.policy_net(s).gather(1, a)
@@ -113,8 +138,23 @@ class Agent:
         }, f"{self.save_path}/{self.ts_id}/_{step}.pth")
 
     def load_model(self, file_path):
-        checkpoint = torch.load(file_path, map_location=self.device)
+        checkpoint = torch.load(file_path, map_location=device)
         self.policy_net.load_state_dict(checkpoint['policy_net'])
         self.target_net.load_state_dict(checkpoint['target_net'])
         self.optimizer.load_state_dict(checkpoint['optimizer'])
         self.learn_step = checkpoint.get('step', 0)
+
+    def encode_obs(self, obs):
+        if not self.comm_flag:
+            return obs
+        obs_t = torch.tensor(obs, dtype=torch.float32).unsqueeze(0).to(device)
+        msg = self.obs_encoder(obs_t)
+        return msg.squeeze(0).detach().cpu().numpy()
+
+    def aggregate_neighbors(self, self_msg, neighbor_msgs):
+        if not self.comm_flag or len(neighbor_msgs) == 0:
+            return np.zeros(self.obs_encoder.out_features)
+        msgs = [self_msg] + neighbor_msgs
+        msgs_t = torch.tensor(np.stack(msgs), dtype=torch.float32).unsqueeze(0).to(device)
+        agg = self.comm(msgs_t)
+        return agg.squeeze(0).detach().cpu().numpy()

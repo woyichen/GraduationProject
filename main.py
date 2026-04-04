@@ -1,10 +1,15 @@
 import os
+
+# os.environ["LIBSUMO_AS_TRACI"] = "1"
+# sumo_bin = r"D:\School\Eclipse\Sumo\bin"  # 替换为你的实际路径
+# if os.path.exists(sumo_bin):
+#     os.add_dll_directory(sumo_bin)
 import numpy as np
 import pandas as pd
 import multiprocessing as mp
 
 import draw
-from train import train, train_vdn
+from train import train
 from config import config
 
 
@@ -13,10 +18,7 @@ def main():
     return_dict = manager.dict()
     processes = []
     for mode in config["modes"]:
-        if mode == "vdn":
-            p = mp.Process(target=train_vdn, args=(mode, return_dict))
-        else:
-            p = mp.Process(target=train, args=(mode, return_dict))
+        p = mp.Process(target=train, args=(mode, return_dict))
         p.start()
         print(f"Spawned process PID:{p.pid}")
         processes.append(p)

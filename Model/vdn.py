@@ -22,7 +22,6 @@ class VDN(nn.Module):
             agent.target_net.load_state_dict(agent.policy_net.state_dict())
             agent.target_net.to(device)
             agent.policy_net.to(device)
-            # agent.optimizer = optim.Adam(agent.policy_net.parameters(), lr=agent.lr)
 
     def update(self, replay_buffer, batch_size):
         """
@@ -34,21 +33,37 @@ class VDN(nn.Module):
         if len(replay_buffer) < batch_size:
             return
 
-        states, actions, next_states, rewards, dones = replay_buffer.sample(batch_size)
+        sample = replay_buffer.sample(batch_size)
+        if len(sample) == 7:
+            states, actions, next_states, rewards, dones, comms, next_comms = sample
+            use_comm = True
+        else:
+            states, actions, next_states, rewards, dones = sample
+            use_comm = False
+        # states, actions, next_states, rewards, dones, comms, next_comms = replay_buffer.sample(batch_size)
+
         # 计算联合Q值
         q_sum = 0
         for ts_id in self.agents:
-            q = self.agents[ts_id].policy_net(states[ts_id].to(device))
+            if use_comm:
+                combined = torch.cat([states[ts_id], comms[ts_id]], dim=-1).to(device)
+            else:
+                combined = states[ts_id].to(device)
+            q = self.agents[ts_id].policy_net(combined)
             q_selected = q.gather(1, actions[ts_id].to(device))
             q_sum += q_selected
 
         next_q_sum = 0
         for ts_id in self.agents:
-            next_q = self.agents[ts_id].target_net(next_states[ts_id].to(device))
+            if use_comm:
+                combined_next = torch.cat([next_states[ts_id], next_comms[ts_id]], dim=-1).to(device)
+            else:
+                combined_next = next_states[ts_id].to(device)
+            next_q = self.agents[ts_id].target_net(combined_next)
             next_q_max = next_q.max(1, keepdim=True)[0]
             next_q_sum += next_q_max
 
-        global_reward = sum(rewards[ts_id].to(device) for ts_id in self.agents)
+        global_reward = sum(rewards[ts_id].to(device) for ts_id in self.agents) / len(self.agents)
         global_done = dones[next(iter(self.agents))].to(device)
         target = global_reward + self.gamma * next_q_sum * (1.0 - global_done)
         loss = nn.MSELoss()(q_sum, target)

@@ -20,17 +20,20 @@ config = {
     "eps_decay": 200000,
 
     "hidden_dim": 512,
-    "episodes": 1500,
+    "Qnet_hidden_dim": [512, 512],
+    "comm_embed_dim":64,
+    "episodes": 2000,
 
     "reward_fn": ["queue", "average-speed"],
     "reward_weights": [0.6, 10],
     # "reward_fn": "queue",
     # "reward_weights": [],
 
-    "DQN_save_path": 'weights/DQN',
-    "DoubleDQN_save_path": "weights/DoubleDQN",
-    "VDN_save_path": "weights/VDN",
-    "MAAC_save_path": "weights/MAAC",
+    "dqn_save_path": 'weights/DQN',
+    "ddqn_save_path": "weights/DoubleDQN",
+    "vdn_save_path": "weights/VDN",
+    "maac_save_path": "weights/MAAC",
+    "comm_save_path": "weights/comm",
     "load_model": False,
     "model_path": '',
 
@@ -39,6 +42,6 @@ config = {
     "ts_lst": ['2187544212', '2187544213', '2187544217', '2187544218', 'cluster_2178819374_4839352770_4839352772',
                'cluster_2178819402_2189318888', 'cluster_2187544206_4839352776', 'cluster_2187544208_4839352781',
                'cluster_366489708_9203769172'],
-    "modes": ['fixed', 'dqn', 'ddqn', 'vdn'],
+    "modes": ['fixed', 'dqn', 'ddqn', 'vdn', 'comm'],
     "reward_keys": ['diff-waiting-time', 'average-speed', 'queue', 'pressure'],
 }
