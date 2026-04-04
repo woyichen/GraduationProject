@@ -113,6 +113,7 @@ class SumoEnvironment(gym.Env):
             sumo_warnings: bool = True,
             additional_sumo_cmd: Optional[str] = None,
             render_mode: Optional[str] = None,
+            flag_neighbor=None,
     ) -> None:
         assert render_mode is None or render_mode in self.metadata["render_modes"], "Invalid render mode."
         self.render_mode = render_mode
@@ -168,7 +169,7 @@ class SumoEnvironment(gym.Env):
             self.ts_ids = ts_ids
         self.observation_class = observation_class
 
-        self._build_traffic_signals(conn)
+        self._build_traffic_signals(conn, flag_neighbor)
 
         conn.close()
 
@@ -185,7 +186,9 @@ class SumoEnvironment(gym.Env):
         # 每个智能体的奖励
         self.rewards = {ts: None for ts in self.ts_ids}
 
-    def _build_traffic_signals(self, conn):
+        # self.flag_neighbor = flag_neighbor
+
+    def _build_traffic_signals(self, conn, flag_neighbor=None):
         """
         每个信号灯对应的TrafficSignal
         :param conn:
@@ -206,6 +209,8 @@ class SumoEnvironment(gym.Env):
                 self.reward_fn[ts],
                 self.reward_weights,
                 conn,
+                neighbor=flag_neighbor,
+                net_file=self._net,
             )
             for ts in self.ts_ids
         }
@@ -239,6 +244,9 @@ class SumoEnvironment(gym.Env):
         if self.additional_sumo_cmd is not None:
             sumo_cmd.extend(self.additional_sumo_cmd.split())
         if self.use_gui or self.render_mode is not None:
+            if "DEFAULT_VIEW" in dir(traci.gui):
+                traci.gui.DEFAULT_VIEW = "View #0"
+                self.sumo.gui.setSchema(traci.gui.DEFAULT_VIEW, "real world")
             sumo_cmd.extend(["--start", "--quit-on-end"])
             if self.render_mode == "rgb_array":
                 sumo_cmd.extend(["--window-size", f"{self.virtual_display[0]},{self.virtual_display[1]}"])

@@ -3,7 +3,10 @@ import torch.nn as nn
 
 
 class MAAC(nn.Module):
-    def __init__(self, obs_dim, action_dim, n_agents, hidden_dim):
+    def __init__(self,
+                 agent_id,
+                 obs_dim,
+                 obs_dim, action_dim, n_agents, hidden_dim):
         super().__init__()
 
         self.n_agents = n_agents

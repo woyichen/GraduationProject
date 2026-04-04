@@ -1,5 +1,6 @@
 import os
 import sys
+import sumolib
 from typing import Callable, List, Union
 
 from traci.exceptions import TraCIException
@@ -29,7 +30,8 @@ class TrafficSignal:
             reward_fn: Union[str, Callable, List],
             reward_weights: List[float],
             sumo,
-            neighbor: bool = False
+            neighbor: bool = False,
+            net_file: str = None,
     ):
         """
 
@@ -108,8 +110,9 @@ class TrafficSignal:
         self.neighbor_flag = neighbor
         if self.neighbor_flag:
             # 邻接信息
-            self.neighbor = None
-            self._set_neighbors()
+            self.neighbor = []
+            self.net = sumolib.net.readNet(net_file)
+            self.neighbor = self._set_neighbors()
 
     def _set_neighbors(self):
         """
@@ -133,7 +136,7 @@ class TrafficSignal:
                         q.put(node)
                     path.add(node)
 
-        self.neighbors = list(neighbors)
+        return list(neighbors)
 
     def _get_reward_fn_from_string(self, reward_fn):
         if type(reward_fn) is str:
