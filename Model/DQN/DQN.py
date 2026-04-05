@@ -61,11 +61,14 @@ class Agent:
             self.state_dim = state_dim
             self.obs_encoder = nn.Linear(state_dim, comm_embed_dim).to(device)
             self.comm = CommAttention(comm_embed_dim, comm_embed_dim).to(device)
-            self.obs_embed = nn.Linear(self.state_dim, self.comm_embed_dim).to(device)
+            # self.obs_embed = nn.Linear(self.state_dim, self.comm_embed_dim).to(device)
             input_dim = self.state_dim + self.comm_embed_dim
             self.policy_net = Network(input_dim, action_dim, hidden_dim).to(device)
             self.target_net = Network(input_dim, action_dim, hidden_dim).to(device)
             self.target_net.load_state_dict(self.policy_net.state_dict())
+            self.optimizer=optim.Adam(list(self.policy_net.parameters())
+                                      +list(self.obs_encoder.parameters())
+                                      +list(self.comm.parameters()), lr=self.lr)
 
     def select_action(self, state, step, comm_vec=None, action_mask=None):
         eps = self.eps_end + (self.eps_start - self.eps_end) * math.exp(-1. * step / self.eps_decay)
