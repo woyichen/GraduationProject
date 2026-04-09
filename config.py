@@ -22,7 +22,7 @@ config = {
     "hidden_dim": 512,
     "Qnet_hidden_dim": [512, 512],
     "comm_embed_dim":64,
-    "episodes": 2000,
+    "episodes": 750,
 
     "reward_fn": ["queue", "average-speed"],
     "reward_weights": [0.6, 10],

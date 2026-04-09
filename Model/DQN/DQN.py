@@ -66,9 +66,9 @@ class Agent:
             self.policy_net = Network(input_dim, action_dim, hidden_dim).to(device)
             self.target_net = Network(input_dim, action_dim, hidden_dim).to(device)
             self.target_net.load_state_dict(self.policy_net.state_dict())
-            self.optimizer=optim.Adam(list(self.policy_net.parameters())
-                                      +list(self.obs_encoder.parameters())
-                                      +list(self.comm.parameters()), lr=self.lr)
+            self.optimizer = optim.Adam(list(self.policy_net.parameters())
+                                        + list(self.obs_encoder.parameters())
+                                        + list(self.comm.parameters()), lr=self.lr)
 
     def select_action(self, state, step, comm_vec=None, action_mask=None):
         eps = self.eps_end + (self.eps_start - self.eps_end) * math.exp(-1. * step / self.eps_decay)
@@ -133,12 +133,16 @@ class Agent:
         import os
         os.makedirs(self.save_path, exist_ok=True)
         os.makedirs(os.path.join(self.save_path, self.ts_id), exist_ok=True)
-        torch.save({
+        save_dict = {
             'policy_net': self.policy_net.state_dict(),
             'target_net': self.target_net.state_dict(),
             'optimizer': self.optimizer.state_dict(),
             'step': step
-        }, f"{self.save_path}/{self.ts_id}/_{step}.pth")
+        }
+        if self.comm_flag:
+            save_dict['obs_encoder'] = self.obs_encoder.state_dict()
+            save_dict['comm_net'] = self.comm.state_dict()
+        torch.save(save_dict, f"{self.save_path}/{self.ts_id}/_{step}.pth")
 
     def load_model(self, file_path):
         checkpoint = torch.load(file_path, map_location=device)
@@ -146,6 +150,9 @@ class Agent:
         self.target_net.load_state_dict(checkpoint['target_net'])
         self.optimizer.load_state_dict(checkpoint['optimizer'])
         self.learn_step = checkpoint.get('step', 0)
+        if self.comm_flag and 'obs_encoder' in checkpoint:
+            self.obs_encoder.load_state_dict(checkpoint['obs_encoder'])
+            self.comm.load_state_dict(checkpoint['comm_net'])
 
     def encode_obs(self, obs):
         if not self.comm_flag:
