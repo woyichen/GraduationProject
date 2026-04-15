@@ -167,4 +167,6 @@ class Agent:
         msgs = [self_msg] + neighbor_msgs
         msgs_t = torch.tensor(np.stack(msgs), dtype=torch.float32).unsqueeze(0).to(device)
         agg = self.comm(msgs_t)
+        # 添加L2归一化
+        agg = agg / (torch.norm(agg, dim=-1, keepdim=True) + 1e-8)
         return agg.squeeze(0).detach().cpu().numpy()
