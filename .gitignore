@@ -234,11 +234,11 @@ desktop.ini
 data/
 old_weights/
 weights/
-test.py
 results/
 old_environment/
 old_DQN/
 old_*
 sumo_log.txt
 history/
+test_weights/
 # ============================
