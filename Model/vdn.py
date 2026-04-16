@@ -59,8 +59,12 @@ class VDN(nn.Module):
                 combined_next = torch.cat([next_states[ts_id], next_comms[ts_id]], dim=-1).to(device)
             else:
                 combined_next = next_states[ts_id].to(device)
-            next_q = self.agents[ts_id].target_net(combined_next)
-            next_q_max = next_q.max(1, keepdim=True)[0]
+            if self.agents[ts_id].double:
+                next_action=self.agents[ts_id].policy_net(combined_next).argmax(1,keepdim=True)
+                next_q_max=self.agents[ts_id].target_net(combined_next).gather(1,next_action)
+            else:
+                next_q = self.agents[ts_id].target_net(combined_next)
+                next_q_max = next_q.max(1, keepdim=True)[0]
             next_q_sum += next_q_max
 
         global_reward = sum(rewards[ts_id].to(device) for ts_id in self.agents) / len(self.agents)

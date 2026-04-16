@@ -25,8 +25,8 @@ config = {
     "hidden_dim": 256,
     # "Qnet_hidden_dim": [512, 512],
     # "comm_embed_dim":64,
-    "comm_embed_dim":32,
-    "episodes": 750,
+    "comm_embed_dim": 32,
+    "episodes": 500,
 
     "reward_fn": ["queue", "average-speed"],
     # "reward_weights": [0.6, 10],
@@ -48,6 +48,8 @@ config = {
                'cluster_2178819402_2189318888', 'cluster_2187544206_4839352776', 'cluster_2187544208_4839352781',
                'cluster_366489708_9203769172'],
     # "modes": ['comm'],
-    "modes": ['fixed', 'dqn', 'ddqn', 'vdn', 'comm'],
+    # "modes":["fixed","dqn","ddqn","vdn","vdn_ddqn","comm","comm_ddqn"],
+    # "modes": ['fixed', 'dqn', 'ddqn', 'vdn', 'comm'],
+    "modes": ["vdn_ddqn", "comm_ddqn"],
     "reward_keys": ['diff-waiting-time', 'average-speed', 'queue', 'pressure'],
 }

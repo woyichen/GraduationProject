@@ -42,7 +42,7 @@ def train(mode: str, return_dict, seed: int = 42):
         sumo_warnings=False,
         # additional_sumo_cmd=,
         # render_mode=
-        flag_neighbor=True if mode == "comm" else False,
+        flag_neighbor=True if mode == "comm" or mode == "comm_ddqn" else False,
     )
     ts_ids = env.ts_ids
     neighbors = {}
@@ -50,7 +50,7 @@ def train(mode: str, return_dict, seed: int = 42):
     replay_buffers = {}
     if mode != 'fixed':
         for ts in ts_ids:
-            if mode in ["comm"]:
+            if mode in ["comm", "comm_ddqn"]:
                 neighbors[ts] = env.traffic_signals[ts].neighbor
             state_dim = env.observation_spaces(ts).shape[0]
             action_dim = env.action_spaces(ts).n
@@ -67,9 +67,9 @@ def train(mode: str, return_dict, seed: int = 42):
                 eps_end=config["eps_end"],
                 eps_decay=config["eps_decay"],
                 target_update=config["target_update"],
-                double=True if mode == "ddqn" else False,
+                double=True if mode in ["ddqn", "vdn_ddqn", "comm_ddqn"] else False,
                 save_path=config[f"{mode}_save_path"],
-                comm_flag=True if mode == "comm" else False,
+                comm_flag=True if mode in ["comm", "comm_ddqn"] else False,
                 n_agents=len(neighbors) + 1 if neighbors is not None else 0,
                 comm_embed_dim=config["comm_embed_dim"],
                 neighbors=neighbors,
@@ -82,7 +82,7 @@ def train(mode: str, return_dict, seed: int = 42):
                     state_dim=state_dim,
                     action_dim=action_dim
                 )
-    if mode in ["comm"]:
+    if mode in ["comm", "comm_ddqn"]:
         replay_buffer = CentralizedReplayBuffer(
             capacity=config["buffer_size"],
             ts_ids=ts_ids,
@@ -90,7 +90,7 @@ def train(mode: str, return_dict, seed: int = 42):
             comm_dim=config["comm_embed_dim"],
         )
         vdn_trainer = VDN(agents, config["gamma"], config["target_update"])
-    elif mode in ["vdn"]:
+    elif mode in ["vdn", "vdn_ddqn"]:
         replay_buffer = CentralizedReplayBuffer(
             capacity=config["buffer_size"],
             ts_ids=ts_ids,
@@ -113,11 +113,10 @@ def train(mode: str, return_dict, seed: int = 42):
         episode_reward = {ts: 0 for ts in ts_ids}
 
         while not done["__all__"]:
-
             actions = {}
             comm_vecs = {}
             next_comm_vecs = {}
-            if mode in ["comm"]:
+            if mode in ["comm", "comm_ddqn"]:
                 msgs = {ts: agents[ts].encode_obs(state[ts]) for ts in ts_ids}
                 # comm_vecs = {}
                 for ts in ts_ids:
@@ -135,7 +134,7 @@ def train(mode: str, return_dict, seed: int = 42):
                     )
                     actions[ts] = action
 
-            if mode in ["dqn", "ddqn", "vdn", "comm"]:
+            if mode in ["dqn", "ddqn", "vdn", "vdn_ddqn", "comm", "comm_ddqn"]:
                 # ===== 选择动作 =====
                 for ts in ts_ids:
                     # 注意：SUMO-RL只在time_to_act时提供state
@@ -153,7 +152,7 @@ def train(mode: str, return_dict, seed: int = 42):
             # ===== 执行动作 =====
             next_state, reward, done, info = env.step(actions)
 
-            if mode == "comm" and not done["__all__"]:
+            if mode in ["comm", "comm_ddqn"] and not done["__all__"]:
                 next_msgs = {ts: agents[ts].encode_obs(next_state[ts]) for ts in ts_ids if ts in next_state}
                 for ts in ts_ids:
                     if ts not in next_state:
@@ -178,7 +177,7 @@ def train(mode: str, return_dict, seed: int = 42):
                             None  # 如果未来支持mask，在此传入
                         )
                         episode_reward[ts] += reward[ts]
-                elif mode in ["vdn", "comm"]:
+                elif mode in ["vdn", "vdn_ddqn", "comm", "comm_ddqn"]:
                     replay_buffer.add(state, actions, next_state, reward, done,
                                       comm=comm_vecs, next_comm=next_comm_vecs)
                     for ts in actions.keys():
@@ -189,7 +188,7 @@ def train(mode: str, return_dict, seed: int = 42):
                     for ts in ts_ids:
                         agents[ts].learn(replay_buffers[ts])
                     global_step += 1
-                elif mode in ["vdn", "comm"]:
+                elif mode in ["vdn", "vdn_ddqn", "comm", "comm_ddqn"]:
                     vdn_trainer.update(replay_buffer, config["batch_size"])
                     global_step += 1
             else:
@@ -224,7 +223,3 @@ def train(mode: str, return_dict, seed: int = 42):
     }
     return_dict[mode] = result
     return result
-
-
-if __name__ == "__main__":
-    pass
