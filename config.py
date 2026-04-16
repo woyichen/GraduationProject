@@ -39,6 +39,8 @@ config = {
     "vdn_save_path": "weights/VDN",
     "maac_save_path": "weights/MAAC",
     "comm_save_path": "weights/comm",
+    "vdn_ddqn_save_path": "weights/vdn_ddqn",
+    "comm_ddqn_save_path": "weights/comm_ddqn",
     "load_model": False,
     "model_path": '',
 
