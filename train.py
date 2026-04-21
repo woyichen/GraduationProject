@@ -89,7 +89,7 @@ def train(mode: str, return_dict, seed: int = 42):
             state_dim=env.observation_spaces(ts_ids[0]).shape[0],
             comm_dim=config["comm_embed_dim"],
         )
-        vdn_trainer = VDN(agents, config["gamma"], config["target_update"])
+        vdn_trainer = VDN(agents, config["gamma"], config["target_update"], neighbors=neighbors)
     elif mode in ["vdn", "vdn_ddqn"]:
         replay_buffer = CentralizedReplayBuffer(
             capacity=config["buffer_size"],

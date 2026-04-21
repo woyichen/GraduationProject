@@ -8,7 +8,7 @@ config = {
     "min_green": 10,
     "max_green": 90,
 
-    "lr": 1e-4,
+    "lr": 5e-5,
     "gamma": 0.99,
     "batch_size": 64,
     "buffer_size": 50000,
@@ -24,13 +24,15 @@ config = {
     # "hidden_dim": 512,
     "hidden_dim": 256,
     # "Qnet_hidden_dim": [512, 512],
-    # "comm_embed_dim":64,
+    # "comm_embed_dim": 64,
     "comm_embed_dim": 32,
-    "episodes": 500,
+    "episodes": 300,
 
-    "reward_fn": ["queue", "average-speed"],
+    # "reward_fn": ["queue", "average-speed"],
+    "reward_fn": "average-speed",
     # "reward_weights": [0.6, 10],
-    "reward_weights": [2.0, 5],
+    # "reward_weights": [2.0, 5],
+    "reward_weights": [1],
     # "reward_fn": "queue",
     # "reward_weights": [],
 
@@ -52,6 +54,6 @@ config = {
     # "modes": ['comm'],
     # "modes":["fixed","dqn","ddqn","vdn","vdn_ddqn","comm","comm_ddqn"],
     # "modes": ['fixed', 'dqn', 'ddqn', 'vdn', 'comm'],
-    "modes": ["vdn_ddqn", "comm_ddqn"],
+    "modes": ["comm", "comm_ddqn"],
     "reward_keys": ['diff-waiting-time', 'average-speed', 'queue', 'pressure'],
 }
