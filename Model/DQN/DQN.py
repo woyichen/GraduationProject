@@ -66,12 +66,22 @@ class Agent:
             self.policy_net = Network(input_dim, action_dim, hidden_dim).to(device)
             self.target_net = Network(input_dim, action_dim, hidden_dim).to(device)
             self.target_net.load_state_dict(self.policy_net.state_dict())
+            # self.sender_gru = nn.GRUCell(
+            #     input_size=state_dim + comm_embed_dim,
+            #     hidden_size=comm_embed_dim
+            # ).to(device)
+            self.h_state = None
             self.optimizer = optim.Adam(list(self.policy_net.parameters())
                                         + list(self.obs_encoder.parameters())
                                         + list(self.comm.parameters()), lr=self.lr)
 
-    def select_action(self, state, step, comm_vec=None, action_mask=None):
-        eps = self.eps_end + (self.eps_start - self.eps_end) * math.exp(-1. * step / self.eps_decay)
+    # def reset_hidden(self, batch_size=1):
+    #     if self.comm_flag:
+    #         self.h_state = torch.zeros(batch_size, self.comm_embed_dim).to(device)
+
+    def select_action(self, state, step, comm_vec=None, action_mask=None, eps=None):
+        if eps is None:
+            eps = self.eps_end + (self.eps_start - self.eps_end) * math.exp(-1. * step / self.eps_decay)
 
         if random.random() < eps:
             if action_mask is not None:
@@ -170,3 +180,20 @@ class Agent:
         # 添加L2归一化
         agg = agg / (torch.norm(agg, dim=-1, keepdim=True) + 1e-8)
         return agg.squeeze(0).detach().cpu().numpy()
+
+    def encode_obs_tensor(self, obs_tensor):
+        if not self.comm_flag:
+            return obs_tensor
+        msg = self.obs_encoder(obs_tensor)
+        return msg
+
+    def aggregate_neighbors_tensor(self, self_msg, neighbor_msgs):
+        if not self.comm_flag or len(neighbor_msgs) == 0:
+            batch_dim = self_msg.shape[0] if self_msg.dim() > 1 else 1
+            return torch.zeros(batch_dim, 0, device=self_msg.device)
+        msgs = [self_msg] + neighbor_msgs
+        msgs_tensor = torch.stack(msgs, dim=1)
+        agg = self.comm(msgs_tensor)
+        # 添加L2归一化
+        agg = agg / (torch.norm(agg, dim=-1, keepdim=True) + 1e-8)
+        return agg

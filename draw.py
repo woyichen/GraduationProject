@@ -85,7 +85,7 @@ def draw_with_csv(csv_path, names=None):
         y = df[col].dropna().values[:min_len]
         y_smooth = smooth(y, w=5)
         x = np.arange(len(y_smooth))
-        plt.plot(x, y_smooth, label=f"{model.upper()} (smoothed)")
+        plt.plot(x, y_smooth, label=f"{model.upper()}")
 
     plt.xlabel("Episode")
     plt.ylabel("Total Reward")

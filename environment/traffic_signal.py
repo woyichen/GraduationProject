@@ -307,7 +307,7 @@ class TrafficSignal:
                     )
                     wait_time += self.env.vehicles[veh][veh_lane]
             wait_time_per_lane.append(wait_time)
-            return wait_time_per_lane
+        return wait_time_per_lane
 
     def _observation_fn_default(self):
         phase_id = [1 if self.green_phase == i else 0 for i in range(self.num_green_phases)]

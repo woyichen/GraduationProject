@@ -11,6 +11,7 @@ from replay.multi_agent_replay_buffer import CentralizedReplayBuffer
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+
 def load_model(mode: str, step: int, ts_id: str) -> str:
     """根据模式、步数和路口ID返回模型文件路径"""
     model_dir = config[f"{mode}_save_path"]
@@ -19,6 +20,7 @@ def load_model(mode: str, step: int, ts_id: str) -> str:
     if not files:
         raise FileNotFoundError(f"No model file found: {pattern}")
     return files[0]
+
 
 def test(mode: str, num_episodes: int, step: int) -> dict:
     """测试指定模式，返回包含每回合详细数据和汇总统计的字典"""
@@ -45,7 +47,7 @@ def test(mode: str, num_episodes: int, step: int) -> dict:
         ts_ids=None,
         fixed_ts=(mode == 'fixed'),
         sumo_warnings=False,
-        flag_neighbor=(mode == "comm"),
+        flag_neighbor=(mode in ["comm", "comm_ddqn"]),
     )
     ts_ids = env.ts_ids
     agents = {}
@@ -55,7 +57,7 @@ def test(mode: str, num_episodes: int, step: int) -> dict:
 
     # 加载模型（fixed 模式不需要）
     if mode != "fixed":
-        if mode == "comm":
+        if mode in ["comm", "comm_ddqn"]:
             neighbors = {ts: env.traffic_signals[ts].neighbor for ts in ts_ids}
         for ts in ts_ids:
             state_dim = env.observation_spaces(ts).shape[0]
@@ -68,13 +70,13 @@ def test(mode: str, num_episodes: int, step: int) -> dict:
                 lr=config["lr"],
                 gamma=config["gamma"],
                 batch_size=config["batch_size"],
-                eps_start=0.0,      # 测试时不探索
+                eps_start=0.0,  # 测试时不探索
                 eps_end=0.0,
-                eps_decay=1,        # 无意义
+                eps_decay=1,  # 无意义
                 target_update=config["target_update"],
-                double=(mode == "ddqn"),
+                double=(mode in ["ddqn", "vdn_ddqn", "comm_ddqn"]),
                 save_path=config[f"{mode}_save_path"],
-                comm_flag=(mode == "comm"),
+                comm_flag=(mode in ["comm", "comm_ddqn"]),
                 n_agents=len(neighbors) + 1 if neighbors else 0,
                 comm_embed_dim=config["comm_embed_dim"],
                 neighbors=neighbors,
@@ -83,12 +85,12 @@ def test(mode: str, num_episodes: int, step: int) -> dict:
             agents[ts].load_model(model_path)
             agents[ts].policy_net.eval()
 
-        if mode in ["vdn", "comm"]:
+        if mode in ["vdn", "vdn_ddqn", "comm", "comm_ddqn"]:
             replay_buffer = CentralizedReplayBuffer(
-                capacity=1,   # 测试时不需要实际存储
+                capacity=1,  # 测试时不需要实际存储
                 ts_ids=ts_ids,
                 state_dim=env.observation_spaces(ts_ids[0]).shape[0],
-                comm_dim=config["comm_embed_dim"] if mode == "comm" else None,
+                comm_dim=config["comm_embed_dim"] if mode in ["comm", "comm_ddqn"] else None,
             )
             vdn_trainer = VDN(agents, config["gamma"], config["target_update"])
 
@@ -96,21 +98,21 @@ def test(mode: str, num_episodes: int, step: int) -> dict:
     episode_rewards = []
     episode_waiting = []
     episode_speed = []
-    episode_components = []   # 每回合各奖励分量（系统总和）
+    episode_components = []  # 每回合各奖励分量（系统总和）
 
     for ep in range(num_episodes):
         state = env.reset()
         done = {"__all__": False}
         episode_reward = {ts: 0.0 for ts in ts_ids}
         total_reward = 0.0
-        total_components = {}   # 本回合累计分量
+        total_components = {}  # 本回合累计分量
 
         while not done["__all__"]:
             actions = {}
             comm_vecs = {}
 
             # ---------- 生成动作 ----------
-            if mode == "comm":
+            if mode in ["comm", "comm_ddqn"]:
                 msgs = {ts: agents[ts].encode_obs(state[ts]) for ts in ts_ids if ts in state}
                 for ts in ts_ids:
                     if ts not in state:
@@ -126,7 +128,7 @@ def test(mode: str, num_episodes: int, step: int) -> dict:
                         action_mask=None, eps=0
                     )
                     actions[ts] = action
-            elif mode in ["dqn", "ddqn", "vdn"]:
+            elif mode in ["dqn", "ddqn", "vdn", "vdn_ddqn"]:
                 for ts in ts_ids:
                     if ts not in state:
                         continue
@@ -134,7 +136,7 @@ def test(mode: str, num_episodes: int, step: int) -> dict:
                         state[ts], step=1e9, comm_vec=None, action_mask=None, eps=0
                     )
                     actions[ts] = action
-            else:   # fixed
+            else:  # fixed
                 actions = {}
 
             # ---------- 环境交互 ----------
@@ -157,7 +159,7 @@ def test(mode: str, num_episodes: int, step: int) -> dict:
         episode_waiting.append(info["system_total_waiting_time"])
         episode_speed.append(info["system_mean_speed"])
         episode_components.append(total_components.copy())
-        print(f"  Episode {ep+1:2d} | Reward: {total_reward:.2f} | "
+        print(f"  Episode {ep + 1:2d} | Reward: {total_reward:.2f} | "
               f"Waiting: {info['system_total_waiting_time']:.0f} | "
               f"Speed: {info['system_mean_speed']:.2f}")
 
@@ -189,6 +191,7 @@ def test(mode: str, num_episodes: int, step: int) -> dict:
         "avg_speed": avg_speed,
         "avg_components": avg_components,
     }
+
 
 def save_test_results(results: dict, output_detail_csv: str, output_summary_csv: str):
     """使用 pandas 保存测试结果（详细数据 + 汇总数据）"""
@@ -230,23 +233,26 @@ def save_test_results(results: dict, output_detail_csv: str, output_summary_csv:
     df_summary.to_csv(output_summary_csv, index=False)
     print(f"Summary results saved to {output_summary_csv}")
 
+
 if __name__ == "__main__":
     test_episodes = 10
-    step_start = 68400
-    step_end = 69000
     step_interval = 100
+    dict = {"fixed": 0,  #
+            "dqn": 19900,
+            "ddqn": 19900,
+            "vdn": 19900,
+            "vdn_ddqn": 19900,
+            "comm": 19900,
+            "comm_ddqn": 19900}
+    dict = {"comm": 143400,
+            "comm_ddqn": 143400}
 
-    # 为每个步长单独测试并保存结果
-    for step in range(step_start, step_end, step_interval):
-        results = {}
-        for mode in ["fixed", "dqn", "vdn", "comm"]:
-            try:
-                res = test(mode, num_episodes=test_episodes, step=step)
-                results[mode] = res
-            except Exception as e:
-                print(f"Error testing {mode} at step {step}: {e}")
-
-        if results:
-            detail_csv = f"test_results_step_{step}.csv"
-            summary_csv = f"test_summary_step_{step}.csv"
-            save_test_results(results, detail_csv, summary_csv)
+    for mode in dict:
+        try:
+            res = test(mode, num_episodes=test_episodes, step=dict[mode])
+            current_result = {mode: res}
+            detail_csv = f"test_results_step_{mode}_{dict[mode]}.csv"
+            summary_csv = f"test_summary_step_{mode}_{dict[mode]}.csv"
+            save_test_results(current_result, detail_csv, summary_csv)
+        except Exception as e:
+            print(f"Error testing {mode} at step {dict[mode]}: {e}")
