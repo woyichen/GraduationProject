@@ -114,6 +114,7 @@ class SumoEnvironment(gym.Env):
             additional_sumo_cmd: Optional[str] = None,
             render_mode: Optional[str] = None,
             flag_neighbor=None,
+            delay: int = 20,
     ) -> None:
         assert render_mode is None or render_mode in self.metadata["render_modes"], "Invalid render mode."
         self.render_mode = render_mode
@@ -152,6 +153,7 @@ class SumoEnvironment(gym.Env):
         self.label = str(SumoEnvironment.CONNECTION_LABEL)
         SumoEnvironment.CONNECTION_LABEL += 1
         self.sumo = None
+        self.delay = delay
 
         # 临时连接以获取交通信号灯信息
         if LIBSUMO:
@@ -222,16 +224,11 @@ class SumoEnvironment(gym.Env):
         """
         sumo_cmd = [
             self._sumo_binary,
-            "-n",
-            self._net,
-            "-r",
-            self._route,
-            "--max-depart-delay",
-            str(self.max_depart_delay),
-            "--waiting-time-memory",
-            str(self.waiting_time_memory),
-            "--time-to-teleport",
-            str(self.time_to_teleport),
+            "-n", self._net,
+            "-r", self._route,
+            "--max-depart-delay", str(self.max_depart_delay),
+            "--waiting-time-memory", str(self.waiting_time_memory),
+            "--time-to-teleport", str(self.time_to_teleport),
         ]
         if self.begin_time > 0:
             sumo_cmd.append(f"-b {self.begin_time}")
@@ -244,10 +241,11 @@ class SumoEnvironment(gym.Env):
         if self.additional_sumo_cmd is not None:
             sumo_cmd.extend(self.additional_sumo_cmd.split())
         if self.use_gui or self.render_mode is not None:
-            if "DEFAULT_VIEW" in dir(traci.gui):
-                traci.gui.DEFAULT_VIEW = "View #0"
-                self.sumo.gui.setSchema(traci.gui.DEFAULT_VIEW, "real world")
+            # if "DEFAULT_VIEW" in dir(traci.gui):
+            #     traci.gui.DEFAULT_VIEW = "View #0"
+            #     self.sumo.gui.setSchema(traci.gui.DEFAULT_VIEW, "real world")
             sumo_cmd.extend(["--start", "--quit-on-end"])
+            sumo_cmd.extend(["--delay", str(self.delay)])
             if self.render_mode == "rgb_array":
                 sumo_cmd.extend(["--window-size", f"{self.virtual_display[0]},{self.virtual_display[1]}"])
                 from pyvirtualdisplay.smartdisplay import SmartDisplay

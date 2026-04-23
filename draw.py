@@ -72,20 +72,20 @@ def draw_with_csv(csv_path, names=None):
     min_len = min(lengths)
     print(f"各模型数据长度: {dict(zip(models, lengths))}, 使用最小长度: {min_len}")
 
-    # 平滑函数（窗口5）
-    def smooth(data, w=5):
-        if len(data) < w:
-            return data
-        return np.convolve(data, np.ones(w) / w, mode='valid')
+    # # 平滑函数（窗口5）
+    # def smooth(data, w=5):
+    #     if len(data) < w:
+    #         return data
+    #     return np.convolve(data, np.ones(w) / w, mode='valid')
 
     # 绘图
     plt.figure(figsize=(12, 6))
     for model in models:
         col = f"{model}_reward"
         y = df[col].dropna().values[:min_len]
-        y_smooth = smooth(y, w=5)
-        x = np.arange(len(y_smooth))
-        plt.plot(x, y_smooth, label=f"{model.upper()}")
+        # y_smooth = smooth(y, w=5)
+        x = np.arange(len(y))
+        plt.plot(x, y, label=f"{model.upper()}")
 
     plt.xlabel("Episode")
     plt.ylabel("Total Reward")
