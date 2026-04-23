@@ -238,14 +238,15 @@ if __name__ == "__main__":
     test_episodes = 10
     step_interval = 100
     dict = {"fixed": 0,  #
-            "dqn": 19900,
-            "ddqn": 19900,
-            "vdn": 19900,
-            "vdn_ddqn": 19900,
-            "comm": 19900,
-            "comm_ddqn": 19900}
-    dict = {"comm": 143400,
+            "dqn": 143400,
+            "ddqn": 143400,
+            "vdn": 98400,
+            "vdn_ddqn": 90600,
+            "comm": 143400,
             "comm_ddqn": 143400}
+    dict = {
+        "comm_ddqn": 143600
+    }
 
     for mode in dict:
         try:
