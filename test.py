@@ -22,7 +22,7 @@ def load_model(mode: str, step: int, ts_id: str) -> str:
     return files[0]
 
 
-def test(mode: str, num_episodes: int, step: int) -> dict:
+def test(mode: str, num_episodes: int, step: int, density: int = 90) -> dict:
     """测试指定模式，返回包含每回合详细数据和汇总统计的字典"""
     print(f"\n========== Testing {mode.upper()} with step={step} ==========")
 
@@ -48,6 +48,9 @@ def test(mode: str, num_episodes: int, step: int) -> dict:
         fixed_ts=(mode == 'fixed'),
         sumo_warnings=False,
         flag_neighbor=(mode in ["comm", "comm_ddqn"]),
+        route_random=True,
+        density=density,
+        route_seed=None,
     )
     ts_ids = env.ts_ids
     agents = {}
@@ -237,23 +240,25 @@ def save_test_results(results: dict, output_detail_csv: str, output_summary_csv:
 if __name__ == "__main__":
     test_episodes = 10
     step_interval = 100
-    dict = {"fixed": 0,  #
-            "dqn": 143400,
-            "ddqn": 143400,
-            "vdn": 98400,
-            "vdn_ddqn": 90600,
-            "comm": 143400,
-            "comm_ddqn": 143400}
-    dict = {
+    mode_dict = {"fixed": 0,  #
+                 "dqn": 143400,
+                 "ddqn": 143400,
+                 "vdn": 98400,
+                 "vdn_ddqn": 90600,
+                 "comm": 143400,
+                 "comm_ddqn": 143400}
+    density_list = [90, 150]
+    mode_dict = {
         "comm_ddqn": 143600
     }
 
-    for mode in dict:
-        try:
-            res = test(mode, num_episodes=test_episodes, step=dict[mode])
-            current_result = {mode: res}
-            detail_csv = f"test_results_step_{mode}_{dict[mode]}.csv"
-            summary_csv = f"test_summary_step_{mode}_{dict[mode]}.csv"
-            save_test_results(current_result, detail_csv, summary_csv)
-        except Exception as e:
-            print(f"Error testing {mode} at step {dict[mode]}: {e}")
+    for mode in mode_dict:
+        for density in density_list:
+            try:
+                res = test(mode, num_episodes=test_episodes, step=mode_dict[mode])
+                current_result = {mode: res}
+                detail_csv = f"test_results_step_{mode}_{mode_dict[mode]}_{density}.csv"
+                summary_csv = f"test_summary_step_{mode}_{mode_dict[mode]}_{density}.csv"
+                save_test_results(current_result, detail_csv, summary_csv)
+            except Exception as e:
+                print(f"Error testing {mode} at step {mode_dict[mode]} with density {density}: {e}")

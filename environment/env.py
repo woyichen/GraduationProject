@@ -3,7 +3,10 @@ delta_time动作间隔>yellow_time黄灯时间
 """
 
 import os
+import time
+import subprocess
 import sys
+import random
 from pathlib import Path
 from typing import Callable, List, Optional, Tuple, Union
 
@@ -115,6 +118,9 @@ class SumoEnvironment(gym.Env):
             render_mode: Optional[str] = None,
             flag_neighbor=None,
             delay: int = 20,
+            route_random: bool = False,  # 车流是否随机生成
+            density: int = 90,  # 车流量：每小时每公里每车道预期生成的车辆数
+            route_seed: int = 42,  # 生成车流的种子
     ) -> None:
         assert render_mode is None or render_mode in self.metadata["render_modes"], "Invalid render mode."
         self.render_mode = render_mode
@@ -154,6 +160,12 @@ class SumoEnvironment(gym.Env):
         SumoEnvironment.CONNECTION_LABEL += 1
         self.sumo = None
         self.delay = delay
+
+        self.route_random = route_random
+        if self.route_random:
+            self._route = f"_{os.getpid()}_{time.time()}_{self._route}"
+        self.density = density
+        self.route_seed = route_seed
 
         # 临时连接以获取交通信号灯信息
         if LIBSUMO:
@@ -270,6 +282,68 @@ class SumoEnvironment(gym.Env):
                 traci.gui.DEFAULT_VIEW = "View #0"
             self.sumo.gui.setSchema(traci.gui.DEFAULT_VIEW, "real world")
 
+    def _generate_route(self, net_file: str,
+                        output_route: str,
+                        density: int = 90,
+                        seed: int = None,
+                        **extra_args):
+        """
+
+        :param net_file: 路网文件路径
+        :param output_route: 输出的.rou.xml文件路径
+        :param density: 每小时每公里每车道预期生成的车辆数
+        :param seed: 随机种子，若为None则随机生成
+        :param extra_args:其他参数
+        """
+        sumo_home = os.environ.get("SUMO_HOME")
+        if not sumo_home:
+            raise EnvironmentError("SUMO_HOME is not set")
+        random_trips = os.path.join(sumo_home, "tools", "randomTrips.py")
+        cmd = [
+            sys.executable, random_trips,
+            "-n", net_file,
+            "--fringe-factor", "5",
+            "--insertion-density", str(density),
+            "-o", output_route.replace(".rou.xml", ".trips.xml"),  # trips 中间文件
+            "-r", output_route,
+            "-b", "0",
+            "-e", "3600",
+            "--trip-attributes", 'departLane="best"',
+            "--fringe-start-attributes", 'departSpeed="max"',
+            "--validate",
+            "--remove-loops",
+            "--via-edge-types",
+            "highway.motorway,highway.motorway_link,highway.trunk_link,highway.primary_link,highway.secondary_link,highway.tertiary_link",
+            "--vehicle-class", "passenger",
+            "--vclass", "passenger",
+            "--prefix", "veh",
+            "--min-distance", "300",
+            "--min-distance.fringe", "10",
+            "--allow-fringe.min-length", "1000",
+            "--lanes",
+            "--seed", (str(seed) if seed else str(random.randrange(1e9))),
+        ]
+
+        for key, value in extra_args.items():
+            cmd.append(f"--{key}")
+            if value is not None:
+                cmd.append(str(value))
+
+        os.makedirs(os.path.dirname(output_route), exist_ok=True)
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            raise RuntimeError(f"randomTrips.py failed with density={density}, seed={seed}\n{result.stderr}")
+        # 删除中间文件
+        trips_file = output_route.replace(".rou.xml", ".trips.xml")
+        try:
+            if os.path.exists(trips_file):
+                os.remove(trips_file)
+        except Exception as e:
+            # 删除失败不影响主流程，可打印警告
+            print(f"Warning: could not delete intermediate trips file {trips_file}: {e}")
+
+        return
+
     def reset(self, seed: Optional[int] = None, **kwargs):
         """重置环境"""
         super().reset(seed=seed, **kwargs)
@@ -280,6 +354,14 @@ class SumoEnvironment(gym.Env):
             self.save_csv(self.out_csv_name, self.episode)
         self.episode += 1
         self.metrics = []
+
+        if self.route_random:
+            self._generate_route(
+                net_file=self._net,
+                output_route=self._route,
+                density=self.density,
+                seed=self.route_seed,
+            )
 
         if seed is not None:
             self.sumo_seed = seed
@@ -537,6 +619,14 @@ class SumoEnvironment(gym.Env):
             self.disp = None
 
         self.sumo = None
+
+        # 删除生成的车流文件
+        if self.route_random and self._route:
+            try:
+                if os.path.exists(self._route):
+                    os.remove(self._route)
+            except Exception as e:
+                print(f"Warning: Failed to delete temporary route file {self._route}: {e}")
 
     def __del__(self):
         self.close()

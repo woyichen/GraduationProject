@@ -85,7 +85,7 @@ class TrafficSignal:
             self.reward_dim = 1
             self.reward_list = [self._get_reward_fn_from_string(self.reward_fn)]
 
-        if self.reward_weights is not None:
+        if self.reward_weights is None:
             self.reward_dim = 1
         # 奖励空间
         self.reward_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.reward_dim,), dtype=np.float32)

@@ -28,13 +28,11 @@ config = {
     "comm_embed_dim": 32,
     "episodes": 300,
 
-    # "reward_fn": ["queue", "average-speed"],
-    "reward_fn": "average-speed",
-    # "reward_weights": [0.6, 10],
+    "reward_fn": ["queue", "average-speed"],
+    # "reward_fn": "average-speed",
+    "reward_weights": [0.35, 10],
     # "reward_weights": [2.0, 5],
-    "reward_weights": [1],
-    # "reward_fn": "queue",
-    # "reward_weights": [],
+    # "reward_weights": [1],
 
     "dqn_save_path": 'weights/DQN',
     "ddqn_save_path": "weights/DoubleDQN",
@@ -51,9 +49,12 @@ config = {
     "ts_lst": ['2187544212', '2187544213', '2187544217', '2187544218', 'cluster_2178819374_4839352770_4839352772',
                'cluster_2178819402_2189318888', 'cluster_2187544206_4839352776', 'cluster_2187544208_4839352781',
                'cluster_366489708_9203769172'],
-    # "modes": ['comm'],
-    # "modes":["fixed","dqn","ddqn","vdn","vdn_ddqn","comm","comm_ddqn"],
-    # "modes": ['fixed', 'dqn', 'ddqn', 'vdn', 'comm'],
-    "modes": ["comm", "comm_ddqn"],
     "reward_keys": ['diff-waiting-time', 'average-speed', 'queue', 'pressure'],
+
+    # "modes": ['fixed'],
+    "modes":["fixed","dqn","ddqn","vdn","vdn_ddqn","comm","comm_ddqn"],
+    # "modes": ["comm", "comm_ddqn"],
+
+    "train_route_random": True,
+    "train_density": 90,
 }

@@ -43,6 +43,10 @@ def train(mode: str, return_dict, seed: int = 42):
         # additional_sumo_cmd=,
         # render_mode=
         flag_neighbor=True if mode == "comm" or mode == "comm_ddqn" else False,
+        # delay=,
+        route_random=config["train_route_random"],
+        density=config["train_density"],
+        route_seed=None,
     )
     ts_ids = env.ts_ids
     neighbors = {}
@@ -129,12 +133,14 @@ def train(mode: str, return_dict, seed: int = 42):
                     if ts not in state:
                         continue
                     action = agents[ts].select_action(
-                        state[ts], global_step, comm_vec=comm_vecs.get(ts),
+                        state[ts],
+                        global_step,
+                        comm_vec=comm_vecs.get(ts),
                         action_mask=None
                     )
                     actions[ts] = action
 
-            if mode in ["dqn", "ddqn", "vdn", "vdn_ddqn", "comm", "comm_ddqn"]:
+            elif mode in ["dqn", "ddqn", "vdn", "vdn_ddqn", "comm", "comm_ddqn"]:
                 # ===== 选择动作 =====
                 for ts in ts_ids:
                     # 注意：SUMO-RL只在time_to_act时提供state
