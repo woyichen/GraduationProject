@@ -8,6 +8,7 @@ from environment.env import SumoEnvironment
 from Model.DQN.DQN import Agent
 from Model.vdn import VDN
 from replay.multi_agent_replay_buffer import CentralizedReplayBuffer
+import multiprocessing as mp
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -146,5 +147,15 @@ if __name__ == "__main__":
             "vdn_ddqn": 90600,
             "comm": 143400,
             "comm_ddqn": 143400}
-    mode = "dqn"
-    demo(mode, dict[mode])
+    modes = ["fixed", "dqn", "ddqn", "vdn", "vdn_ddqn", "comm", "comm_ddqn"]
+    modes = ["fixed", "comm"]
+    # demo(mode, dict[mode])
+    processes = []
+    for mode in modes:
+        p = mp.Process(target=demo, args=(mode, dict[mode]))
+        p.start()
+        processes.append(p)
+        print(f"Started Demo process for {mode} (PID: {p.pid})")
+
+    for p in processes:
+        p.join()

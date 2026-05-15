@@ -163,7 +163,8 @@ class SumoEnvironment(gym.Env):
 
         self.route_random = route_random
         if self.route_random:
-            self._route = f"_{os.getpid()}_{time.time()}_{self._route}"
+            os.makedirs("tmp", exist_ok=True)
+            self._route = os.path.join("tmp", f"_{os.getpid()}_{time.time()}_{self._route}")
         self.density = density
         self.route_seed = route_seed
 

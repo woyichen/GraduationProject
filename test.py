@@ -1,4 +1,5 @@
 import os
+import time
 import glob
 import numpy as np
 import pandas as pd
@@ -24,7 +25,7 @@ def load_model(mode: str, step: int, ts_id: str) -> str:
 
 def test(mode: str, num_episodes: int, step: int, density: int = 90) -> dict:
     """测试指定模式，返回包含每回合详细数据和汇总统计的字典"""
-    print(f"\n========== Testing {mode.upper()} with step={step} ==========")
+    print(f"\n========== Testing {mode.upper()} with step={step}, density={density} ==========")
 
     env = SumoEnvironment(
         net_file=config["net_file"],
@@ -102,6 +103,7 @@ def test(mode: str, num_episodes: int, step: int, density: int = 90) -> dict:
     episode_waiting = []
     episode_speed = []
     episode_components = []  # 每回合各奖励分量（系统总和）
+    episode_decision_times = []
 
     for ep in range(num_episodes):
         state = env.reset()
@@ -110,9 +112,14 @@ def test(mode: str, num_episodes: int, step: int, density: int = 90) -> dict:
         total_reward = 0.0
         total_components = {}  # 本回合累计分量
 
+        total_decision_time = 0.0
+        decision_count = 0
+
         while not done["__all__"]:
             actions = {}
             comm_vecs = {}
+
+            start_time = time.perf_counter()
 
             # ---------- 生成动作 ----------
             if mode in ["comm", "comm_ddqn"]:
@@ -142,6 +149,10 @@ def test(mode: str, num_episodes: int, step: int, density: int = 90) -> dict:
             else:  # fixed
                 actions = {}
 
+            decision_time = time.perf_counter() - start_time
+            total_decision_time += decision_time
+            decision_count += len(actions)
+
             # ---------- 环境交互 ----------
             next_state, reward, done, info = env.step(actions)
 
@@ -162,9 +173,14 @@ def test(mode: str, num_episodes: int, step: int, density: int = 90) -> dict:
         episode_waiting.append(info["system_total_waiting_time"])
         episode_speed.append(info["system_mean_speed"])
         episode_components.append(total_components.copy())
+
+        avg_decesion_time = (total_decision_time / decision_count * 1000.0) if decision_count > 0 else 0
+        episode_decision_times.append(avg_decesion_time)
+
         print(f"  Episode {ep + 1:2d} | Reward: {total_reward:.2f} | "
               f"Waiting: {info['system_total_waiting_time']:.0f} | "
-              f"Speed: {info['system_mean_speed']:.2f}")
+              f"Speed: {info['system_mean_speed']:.2f} | "
+              f"AvgDecisionTime: {avg_decesion_time:.3f}ms")
 
     env.close()
 
@@ -188,10 +204,12 @@ def test(mode: str, num_episodes: int, step: int, density: int = 90) -> dict:
         "all_waiting": episode_waiting,
         "all_speed": episode_speed,
         "all_components": episode_components,
+        "all_decision_time": episode_decision_times,
         "avg_reward": avg_reward,
         "std_reward": std_reward,
         "avg_waiting": avg_waiting,
         "avg_speed": avg_speed,
+        "avg_decision_time": np.mean(episode_decision_times),
         "avg_components": avg_components,
     }
 
@@ -210,12 +228,17 @@ def save_test_results(results: dict, output_detail_csv: str, output_summary_csv:
                 "total_reward": res["all_rewards"][ep],
                 "total_waiting": res["all_waiting"][ep],
                 "avg_speed": res["all_speed"][ep],
+                "avg_decision_time_ms": res["all_decision_time"][ep],
             }
             comp_dict = res["all_components"][ep]
             for k in comp_keys:
                 row[f"comp_{k}"] = comp_dict.get(k, 0.0)
             detail_rows.append(row)
     df_detail = pd.DataFrame(detail_rows)
+    mean_row = {col: df_detail[col].mean() for col in df_detail.columns if col not in ["mode", "episode"]}
+    mean_row["mode"] = "Average"
+    mean_row["episode"] = ""
+    df_detail = pd.concat([df_detail, pd.DataFrame([mean_row])], ignore_index=True)
     df_detail.to_csv(output_detail_csv, index=False)
     print(f"Detailed results saved to {output_detail_csv}")
 
@@ -228,6 +251,7 @@ def save_test_results(results: dict, output_detail_csv: str, output_summary_csv:
             "std_reward": res["std_reward"],
             "avg_waiting": res["avg_waiting"],
             "avg_speed": res["avg_speed"],
+            "avg_decision_time_ms": res["avg_decision_time"],
         }
         for k in comp_keys:
             row[f"avg_comp_{k}"] = res["avg_components"].get(k, 0.0)
@@ -240,7 +264,7 @@ def save_test_results(results: dict, output_detail_csv: str, output_summary_csv:
 if __name__ == "__main__":
     test_episodes = 10
     step_interval = 100
-    mode_dict = {"fixed": 0,  #
+    mode_dict = {"fixed": 0,
                  "dqn": 143400,
                  "ddqn": 143400,
                  "vdn": 98400,
@@ -248,14 +272,14 @@ if __name__ == "__main__":
                  "comm": 143400,
                  "comm_ddqn": 143400}
     density_list = [90, 150]
-    mode_dict = {
-        "comm_ddqn": 143600
-    }
+    # mode_dict = {
+    #     "comm": 143600
+    # }
 
     for mode in mode_dict:
         for density in density_list:
             try:
-                res = test(mode, num_episodes=test_episodes, step=mode_dict[mode])
+                res = test(mode, num_episodes=test_episodes, step=mode_dict[mode],density=density)
                 current_result = {mode: res}
                 detail_csv = f"test_results_step_{mode}_{mode_dict[mode]}_{density}.csv"
                 summary_csv = f"test_summary_step_{mode}_{mode_dict[mode]}_{density}.csv"

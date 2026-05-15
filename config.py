@@ -28,10 +28,9 @@ config = {
     "comm_embed_dim": 32,
     "episodes": 300,
 
-    "reward_fn": ["queue", "average-speed"],
+    "reward_fn": ["average-speed", "queue"],
     # "reward_fn": "average-speed",
-    "reward_weights": [0.35, 10],
-    # "reward_weights": [2.0, 5],
+    "reward_weights": [1, 0.035],
     # "reward_weights": [1],
 
     "dqn_save_path": 'weights/DQN',
@@ -52,7 +51,7 @@ config = {
     "reward_keys": ['diff-waiting-time', 'average-speed', 'queue', 'pressure'],
 
     # "modes": ['fixed'],
-    "modes":["fixed","dqn","ddqn","vdn","vdn_ddqn","comm","comm_ddqn"],
+    "modes": ["fixed", "dqn", "ddqn", "vdn", "vdn_ddqn", "comm", "comm_ddqn"],
     # "modes": ["comm", "comm_ddqn"],
 
     "train_route_random": True,
